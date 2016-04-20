@@ -21,3 +21,9 @@ Planned Modules
 ---------------
 
  * auditd
+
+
+inotify
+-------
+
+documentation pending (see pulsar/inotify directory structure for hints)

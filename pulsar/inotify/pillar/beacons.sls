@@ -1,16 +1,16 @@
 beacons:
   inotify:
-    /boot: {}
     /etc: {}
     /lib: {}
-    /lib64: {}
     /bin: {}
     /sbin: {}
-    /usr/bin: {}
-    /usr/sbin: {}
-    /opt/bin: {}
-    /opt/sbin: {}
+    /boot: {}
+    /lib64: {}
     /usr/lib: {}
+    /usr/bin: {}
+    /opt/bin: {}
+    /usr/sbin: {}
+    /opt/sbin: {}
     /usr/lib64: {}
     /usr/local/etc: {}
     /usr/local/bin: {}

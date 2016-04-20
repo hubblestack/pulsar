@@ -13,11 +13,11 @@ Installation
 Supported Modules
 -----------------
 
+ * inotify
  * checksum validation
 
 
 Planned Modules
 ---------------
 
- * inotify
  * auditd

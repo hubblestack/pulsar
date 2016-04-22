@@ -16,6 +16,12 @@ beacons:
     /usr/local/bin: {}
     /usr/local/lib: {}
     /usr/local/sbin: {}
+    /var:
+      exclude:
+        - /var/log
+        - /var/spool
+        - /var/cache
+        - /var/lock
 
     recurse: True
     auto_add: True

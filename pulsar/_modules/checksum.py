@@ -35,7 +35,7 @@ def _stats(target):
     return __salt__['file.stats'](target)
 
 
-def checksum(algo='sha256', targets=[], filename='', *args, **kwargs):
+def checksum(algo='sha256', targets=[], excludes=[], filename='', *args, **kwargs):
     '''
     Generate dictionary of hashes and corresponding filenames.
 
@@ -57,21 +57,30 @@ def checksum(algo='sha256', targets=[], filename='', *args, **kwargs):
         try:
             if __salt__['config.get']('fim:targets'):
                 targets = __salt__['config.get']('fim:targets')
-        except:
+        except KeyError:
             return 'No targets defined. Exiting'
+
+    ## check for preconfigured exclusions. this can be a file or a directory
+    if not excludes:
+        try:
+            if __salt__['config.get']('fim:exclude'):
+                excludes = __salt__['config.get']('fim:excludes')
+        except KeyError:
+            LOG.debug('No targets to exclude. Defaulting to empty list')
 
     ## iterate through list of targets and generate checksums
     for target in targets:
         if os.path.isdir(target):
             for root, dirs, files in os.walk(target):
+                dirs[:] = [d for d in dirs if d not in excludes]
                 for file_ in files:
                     target = os.path.join(root, file_)
-                    if os.path.isfile(target):
+                    if os.path.isfile(target) and target not in excludes:
                         checksums[target] = {'stats': {}}
                         checksums[target]['stats'] = _stats(target)
                         checksums[target]['stats'].update({'checksum': _hasher(algo, target)})
                         checksums[target]['stats'].update({'hostname': hostname})
-        elif os.path.isfile(target):
+        elif os.path.isfile(target) and target not in excludes:
             checksums[target] = {'stats': {}}
             checksums[target]['stats'] = _stats(target)
             checksums[target]['stats'].update({'checksum': _hasher(algo, target)})

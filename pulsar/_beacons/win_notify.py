@@ -28,39 +28,11 @@ def __virtual__():
 
 def validate(config):
     '''
-    Validate the beacon configuration first.  If validation succeeds, it will check the folders
-     for the correct ACL and modify them as necessary.
+    Validate the beacon configuration.
     Once that is done it will return a successful validation
     :param config:
     :return:
     '''
-
-    VALID_MASK = [
-        'ExecuteFile',
-        'ReadData',
-        'ReadAttributes',
-        'ReadExtendedAttributes',
-        'CreateFiles',
-        'AppendData',
-        'WriteAttributes',
-        'WriteExtendedAttributes',
-        'DeleteSubdirectoriesAndFiles',
-        'Delete',
-        'ReadPermissions',
-        'ChangePermissions',
-        'TakeOwnership',
-        'Write',
-        'Read',
-        'ReadAndExecute',
-        'Modify'
-    ]
-
-    VALID_TYPE = [
-        'all',
-        'success',
-        'fail'
-    ]
-
     # Configuration for win_notify beacon should be a dict of dicts
     log.debug('config {0}'.format(config))
     if not isinstance(config, dict):
@@ -90,20 +62,6 @@ def validate(config):
                 for wtype in config[config_item]['wtype']:
                     if wtype not in VALID_TYPE:
                         return False, 'Configuration for win_notify beacon invalid type option {0}'.format(wtype)
-
-        # Validate ACLs on watched folders/files and add if needed
-        for path in config:
-            if isinstance(config[path], dict):
-                mask = config[path].get('mask', DEFAULT_MASK)
-                wtype = config[path].get('wtype', DEFAULT_TYPE)
-                recurse = config[path].get('recurse', True)
-                if isinstance(mask, list) and isinstance(wtype, str) and isinstance('recurse', bool):
-                    success = _check_acl(path, mask, wtype, recurse)
-                if not success:
-                    _add_acl(path, mask, wtype, recurse)
-                if config[path].get('exclude', False):
-                    _remove_acl(path)
-
         return True, 'Valid beacon configuration'
 
 
@@ -164,6 +122,45 @@ def beacon(config):
     :return:
     '''
     ret = []
+
+    VALID_MASK = [
+        'ExecuteFile',
+        'ReadData',
+        'ReadAttributes',
+        'ReadExtendedAttributes',
+        'CreateFiles',
+        'AppendData',
+        'WriteAttributes',
+        'WriteExtendedAttributes',
+        'DeleteSubdirectoriesAndFiles',
+        'Delete',
+        'ReadPermissions',
+        'ChangePermissions',
+        'TakeOwnership',
+        'Write',
+        'Read',
+        'ReadAndExecute',
+        'Modify'
+    ]
+
+    VALID_TYPE = [
+        'all',
+        'success',
+        'fail'
+    ]
+
+    # Validate ACLs on watched folders/files and add if needed
+    for path in config:
+        if isinstance(config[path], dict):
+            mask = config[path].get('mask', DEFAULT_MASK)
+            wtype = config[path].get('wtype', DEFAULT_TYPE)
+            recurse = config[path].get('recurse', True)
+            if isinstance(mask, list) and isinstance(wtype, str) and isinstance('recurse', bool):
+                success = _check_acl(path, mask, wtype, recurse)
+            if not success:
+                _add_acl(path, mask, wtype, recurse)
+            if config[path].get('exclude', False):
+                _remove_acl(path)
 
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events('5')

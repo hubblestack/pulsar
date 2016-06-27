@@ -15,7 +15,7 @@ import os
 
 import salt.ext.six
 
-LOG = logging.getlogger(__name__)
+LOG = logging.getLogger(__name__)
 DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 'Takeownership']
 DEFAULT_TYPE = 'all'
 

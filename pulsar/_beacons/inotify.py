@@ -19,6 +19,7 @@ import os
 
 # Import salt libs
 import salt.ext.six
+import salt.loader
 
 # Import third party libs
 try:
@@ -259,5 +260,15 @@ def beacon(config):
         else:
             wm.add_watch(path, mask, rec=rec, auto_add=auto_add)
 
-    # Return event data
-    return ret
+    if ret and 'return' in config:
+        __returners__ = salt.loader.returners(__opts__, __salt__)
+        returner = '{0}.returner'.format(config['return'])
+        if returner not in __returners__:
+            log.error('Could not find {0} returner for inotify beacon'.format(config['return']))
+            return ret
+        for item in ret:
+            __returners__[returner](item)
+        return []
+    else:
+        # Return event data
+        return ret

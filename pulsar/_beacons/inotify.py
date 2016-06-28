@@ -152,6 +152,7 @@ def beacon(config):
               exclude:
                 - /path/to/file/or/dir/exclude1
                 - /path/to/file/or/dir/exclude2
+            return: splunk
 
     The mask list can contain the following events (the default mask is create,
     delete, and modify):

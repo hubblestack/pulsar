@@ -269,7 +269,7 @@ def beacon(config):
             log.error('Could not find {0} returner for inotify beacon'.format(config['return']))
             return ret
         for item in ret:
-            __returners__[returner](item)
+            __returners__[returner]({'return': item})
         return []
     else:
         # Return event data

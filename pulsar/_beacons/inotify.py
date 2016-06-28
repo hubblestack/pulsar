@@ -229,6 +229,8 @@ def beacon(config):
     # Update existing watches and add new ones
     # TODO: make the config handle more options
     for path in config:
+        if path == 'return':
+            continue
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)
             if isinstance(mask, list):

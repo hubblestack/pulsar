@@ -155,6 +155,10 @@ def beacon(config):
             return: splunk
             checksum: sha256
             stats: True
+            batch: True
+
+    Note that if `batch: True`, the configured returner must support receiving
+    a list of events, rather than single one-off events.
 
     The mask list can contain the following events (the default mask is create,
     delete, and modify):
@@ -245,7 +249,7 @@ def beacon(config):
     # Update existing watches and add new ones
     # TODO: make the config handle more options
     for path in config:
-        if path == 'return' or path == 'checksum' or path == 'stats':
+        if path == 'return' or path == 'checksum' or path == 'stats' or path == 'batch':
             continue
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)
@@ -288,8 +292,14 @@ def beacon(config):
         if returner not in __returners__:
             log.error('Could not find {0} returner for pulsar beacon'.format(config['return']))
             return ret
-        for item in ret:
-            __returners__[returner]({'return': item})
+        if config.get('batch', False):
+            transformed = []
+            for item in ret:
+                transformed.append({'return': item})
+            __returners__[returner](transformed)
+        else:
+            for item in ret:
+                __returners__[returner]({'return': item})
         return []
     else:
         # Return event data

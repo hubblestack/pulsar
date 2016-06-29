@@ -226,7 +226,7 @@ def beacon(config):
 
                 if config.get('checksum', False):
                     sum_type = config['checksum']
-                    if not isinstance(sum_type, six.string_types):
+                    if not isinstance(sum_type, salt.ext.six.string_types):
                         sum_type = 'sha256'
                     sub['checksum'] = __salt__['file.get_hash'](path, sum_type)
                 if config.get('stats', False):

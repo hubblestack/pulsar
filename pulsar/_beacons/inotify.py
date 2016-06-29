@@ -153,6 +153,8 @@ def beacon(config):
                 - /path/to/file/or/dir/exclude1
                 - /path/to/file/or/dir/exclude2
             return: splunk
+            checksum: sha256
+            stats: True
 
     The mask list can contain the following events (the default mask is create,
     delete, and modify):
@@ -218,6 +220,15 @@ def beacon(config):
                 sub = {'tag': event.path,
                        'path': event.pathname,
                        'change': event.maskname}
+
+                if config.get('checksum', False):
+                    sum_type = config['checksum']
+                    if not isinstance(sum_type, six.string_types):
+                        sum_type = 'sha256'
+                    sub['checksum'] = __salt__['file.get_hash'](path, sum_type)
+                if config.get('stats', False):
+                    sub['stats'] = __salt__['file.stats'](path)
+
                 ret.append(sub)
             else:
                 log.info('Excluding {0} from event for {1}'.format(event.pathname, path))
@@ -230,7 +241,7 @@ def beacon(config):
     # Update existing watches and add new ones
     # TODO: make the config handle more options
     for path in config:
-        if path == 'return':
+        if path == 'return' or path == 'checksum' or path == 'stats':
             continue
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)

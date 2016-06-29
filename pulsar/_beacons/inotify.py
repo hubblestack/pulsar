@@ -274,6 +274,10 @@ def beacon(config):
         else:
             wm.add_watch(path, mask, rec=rec, auto_add=auto_add)
 
+    if __salt__['config.get']('inotify_maintenance_mode', False):
+        # We're in maintenance mode, throw away findings
+        ret = []
+
     if ret and 'return' in config:
         __returners__ = salt.loader.returners(__opts__, __salt__)
         returner = '{0}.returner'.format(config['return'])

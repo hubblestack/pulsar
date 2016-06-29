@@ -33,7 +33,6 @@ def validate(config):
     :param config:
     :return:
     '''
-<<<<<<< HEAD
     VALID_MASK = [
         'ExecuteFile',
         'ReadData',
@@ -60,8 +59,6 @@ def validate(config):
         'fail'
     ]
 
-=======
->>>>>>> a0f805608b185cfdb429bfef921045462594ae4f
     # Configuration for win_notify beacon should be a dict of dicts
     log.debug('config {0}'.format(config))
     if not isinstance(config, dict):
@@ -152,56 +149,18 @@ def beacon(config):
     '''
     ret = []
 
-<<<<<<< HEAD
-=======
-    VALID_MASK = [
-        'ExecuteFile',
-        'ReadData',
-        'ReadAttributes',
-        'ReadExtendedAttributes',
-        'CreateFiles',
-        'AppendData',
-        'WriteAttributes',
-        'WriteExtendedAttributes',
-        'DeleteSubdirectoriesAndFiles',
-        'Delete',
-        'ReadPermissions',
-        'ChangePermissions',
-        'TakeOwnership',
-        'Write',
-        'Read',
-        'ReadAndExecute',
-        'Modify'
-    ]
-
-    VALID_TYPE = [
-        'all',
-        'success',
-        'fail'
-    ]
-
->>>>>>> a0f805608b185cfdb429bfef921045462594ae4f
     # Validate ACLs on watched folders/files and add if needed
     for path in config:
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)
             wtype = config[path].get('wtype', DEFAULT_TYPE)
             recurse = config[path].get('recurse', True)
-<<<<<<< HEAD
             if isinstance(mask, list) and isinstance(wtype, str) and isinstance(recurse, bool):
                 success = _check_acl(path, mask, wtype, recurse)
                 if not success:
                     confirm = _add_acl(path, mask, wtype, recurse)
                 if config[path].get('exclude', False):
                     _remove_acl(path)
-=======
-            if isinstance(mask, list) and isinstance(wtype, str) and isinstance('recurse', bool):
-                success = _check_acl(path, mask, wtype, recurse)
-            if not success:
-                _add_acl(path, mask, wtype, recurse)
-            if config[path].get('exclude', False):
-                _remove_acl(path)
->>>>>>> a0f805608b185cfdb429bfef921045462594ae4f
 
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events('-5')

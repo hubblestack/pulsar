@@ -224,7 +224,7 @@ def beacon(config):
                        'path': event.pathname,
                        'change': event.maskname}
 
-                if config.get('checksum', False):
+                if config.get('checksum', False) and os.path.isfile(path):
                     sum_type = config['checksum']
                     if not isinstance(sum_type, salt.ext.six.string_types):
                         sum_type = 'sha256'

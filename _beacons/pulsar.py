@@ -186,7 +186,7 @@ def beacon(config):
     exclude:
       Exclude directories or files from triggering events in the watched directory
 
-    If pillar/grains/minion config key `pulsar_maintenance_mode` is set to
+    If pillar/grains/minion config key `hubblestack.pulsar.maintenance` is set to
     True, then changes will be discarded.
     '''
     ret = []
@@ -277,7 +277,7 @@ def beacon(config):
         else:
             wm.add_watch(path, mask, rec=rec, auto_add=auto_add)
 
-    if __salt__['config.get']('pulsar_maintenance_mode', False):
+    if __salt__['config.get']('hubblestack.pulsar.maintenance', False):
         # We're in maintenance mode, throw away findings
         ret = []
 

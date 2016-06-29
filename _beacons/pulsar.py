@@ -235,7 +235,10 @@ def beacon(config):
                     sub['checksum'] = __salt__['file.get_hash'](path, sum_type)
                     sub['checksum_type'] = sum_type
                 if config.get('stats', False):
-                    sub['stats'] = __salt__['file.stats'](path)
+                    try:
+                        sub['stats'] = __salt__['file.stats'](event.pathname)
+                    except NameError:
+                        sub['stats'] = __salt__['file.stats'](path)
 
                 ret.append(sub)
             else:

@@ -33,6 +33,31 @@ def validate(config):
     :param config:
     :return:
     '''
+    VALID_MASK = [
+        'ExecuteFile',
+        'ReadData',
+        'ReadAttributes',
+        'ReadExtendedAttributes',
+        'CreateFiles',
+        'AppendData',
+        'WriteAttributes',
+        'WriteExtendedAttributes',
+        'DeleteSubdirectoriesAndFiles',
+        'Delete',
+        'ReadPermissions',
+        'ChangePermissions',
+        'TakeOwnership',
+        'Write',
+        'Read',
+        'ReadAndExecute',
+        'Modify'
+    ]
+
+    VALID_TYPE = [
+        'all',
+        'success',
+        'fail'
+    ]
     # Configuration for win_notify beacon should be a dict of dicts
     log.debug('config {0}'.format(config))
     if not isinstance(config, dict):
@@ -123,32 +148,6 @@ def beacon(config):
     '''
     ret = []
 
-    VALID_MASK = [
-        'ExecuteFile',
-        'ReadData',
-        'ReadAttributes',
-        'ReadExtendedAttributes',
-        'CreateFiles',
-        'AppendData',
-        'WriteAttributes',
-        'WriteExtendedAttributes',
-        'DeleteSubdirectoriesAndFiles',
-        'Delete',
-        'ReadPermissions',
-        'ChangePermissions',
-        'TakeOwnership',
-        'Write',
-        'Read',
-        'ReadAndExecute',
-        'Modify'
-    ]
-
-    VALID_TYPE = [
-        'all',
-        'success',
-        'fail'
-    ]
-
     # Validate ACLs on watched folders/files and add if needed
     for path in config:
         if isinstance(config[path], dict):
@@ -162,8 +161,10 @@ def beacon(config):
             if config[path].get('exclude', False):
                 _remove_acl(path)
 
-    #Read in events since last call.  Time_frame in minutes
+    # Read in events since last call.  Time_frame in minutes
     ret = _pull_events('5')
+    if ret:
+        return ret
 
 
 def _check_acl(path, mask, wtype, recurse):

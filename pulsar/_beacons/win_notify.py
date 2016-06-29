@@ -15,7 +15,7 @@ import os
 
 import salt.ext.six
 
-LOG = logging.getlogger(__name__)
+LOG = logging.getLogger(__name__)
 DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 'Takeownership']
 DEFAULT_TYPE = 'all'
 
@@ -28,13 +28,11 @@ def __virtual__():
 
 def validate(config):
     '''
-    Validate the beacon configuration first.  If validation succeeds, it will check the folders
-     for the correct ACL and modify them as necessary.
+    Validate the beacon configuration.
     Once that is done it will return a successful validation
     :param config:
     :return:
     '''
-
     VALID_MASK = [
         'ExecuteFile',
         'ReadData',
@@ -90,20 +88,6 @@ def validate(config):
                 for wtype in config[config_item]['wtype']:
                     if wtype not in VALID_TYPE:
                         return False, 'Configuration for win_notify beacon invalid type option {0}'.format(wtype)
-
-        # Validate ACLs on watched folders/files and add if needed
-        for path in config:
-            if isinstance(config[path], dict):
-                mask = config[path].get('mask', DEFAULT_MASK)
-                wtype = config[path].get('wtype', DEFAULT_TYPE)
-                recurse = config[path].get('recurse', True)
-                if isinstance(mask, list) and isinstance(wtype, str) and isinstance('recurse', bool):
-                    success = _check_acl(path, mask, wtype, recurse)
-                if not success:
-                    _add_acl(path, mask, wtype, recurse)
-                if config[path].get('exclude', False):
-                    _remove_acl(path)
-
         return True, 'Valid beacon configuration'
 
 
@@ -165,28 +149,47 @@ def beacon(config):
     '''
     ret = []
 
+    # Validate ACLs on watched folders/files and add if needed
+    for path in config:
+        if isinstance(config[path], dict):
+            mask = config[path].get('mask', DEFAULT_MASK)
+            wtype = config[path].get('wtype', DEFAULT_TYPE)
+            recurse = config[path].get('recurse', True)
+            if isinstance(mask, list) and isinstance(wtype, str) and isinstance(recurse, bool):
+                success = _check_acl(path, mask, wtype, recurse)
+                if not success:
+                    confirm = _add_acl(path, mask, wtype, recurse)
+                if config[path].get('exclude', False):
+                    _remove_acl(path)
+
     #Read in events since last call.  Time_frame in minutes
-    ret = _pull_events('5')
+    ret = _pull_events('-5')
+    return ret
 
 
 def _check_acl(path, mask, wtype, recurse):
     audit_dict = {}
     success = True
-    if 'all' in mask.lower():
-        mask = ['Success', 'Failure']
+    if 'all' in wtype.lower():
+        wtype = ['Success', 'Failure']
+    else:
+        wtype = [wtype]
 
     audit_acl = __salt__['cmd.run']('(Get-Acl {0} -Audit).Audit | fl'.format(path), shell='powershell',
                                     python_shell=True)
-    audit_acl = audit_acl.split('\n')
+    if not audit_acl:
+        success = False
+        return success
+    audit_acl = audit_acl.replace('\r','').split('\n')
     for line in audit_acl:
         if line:
             d = line.split(':')
             audit_dict[d[0].strip()] = d[1].strip()
     for item in mask:
-        if item not in audit_dict['AuditFlags']:
+        if item not in audit_dict['FileSystemRights']:
             success = False
     for item in wtype:
-        if item not in audit_dict['FileSystemRights']:
+        if item not in audit_dict['AuditFlags']:
             success = False
     if 'Everyone' not in audit_dict['IdentityReference']:
         success = False
@@ -218,15 +221,18 @@ def _add_acl(path, mask, wtype, recurse):
         inherit_type = 'ContainerInherit,ObjectInherit'
     else:
         inherit_type = 'None'
-    if 'all' in audit_type:
+    if 'all' in wtype:
         audit_type = 'Success,Failure'
     else:
         audit_type = wtype
     propagation_flags = 'None'
     __salt__['cmd.run']('$accessrule = New-Object System.Security.AccessControl.FileSystemAuditRule('
-                                  '{0},{1},{2},{3},{4}; $acl = Get-Acl {5}; $acl.SetAuditRule($accessrule); '
+                                  '"{0}","{1}","{2}","{3}","{4}"); $acl = Get-Acl {5}; $acl.SetAuditRule($accessrule); '
                                   '$acl | Set-Acl {5}'.format(audit_user, audit_rules, inherit_type, propagation_flags,
                                                               audit_type, path), shell='powershell', python_shell=True)
+    return 'ACL set up for {0} - with {1} user, {2} rules, {3} audit_type, and recurse is {4}'.format(path, audit_user, 
+                                                                                                      audit_rules,
+                                                                                                      audit_type, recurse)
 
 
 def _remove_acl(path):
@@ -246,7 +252,7 @@ def _remove_acl(path):
 
 def _pull_events(time_frame):
     events_list = []
-    events_output = __salt__['cmd.run']('Get-EventLog -LogName Security -After ((Get-Date).AddMinutes({0})) '
+    events_output = __salt__['cmd.run_stdout']('Get-EventLog -LogName Security -After ((Get-Date).AddMinutes({0})) '
                                         '-InstanceId 4663 | fl'.format(time_frame), shell='powershell',
                                         python_shell=True)
     events = events_output.split('\n\n')
@@ -301,7 +307,7 @@ def _get_access_translation(access):
                    '4436': 'Notify About Changes to Keys', '4437': 'Create Link', '6931': 'Print', }
 
     access = access.replace('%%', '').strip()
-    ret_str = access.get(access_dict[access], False)
+    ret_str = access_dict.get(access, False)
     if ret_str:
         return ret_str
     else:
@@ -314,3 +320,4 @@ def _get_item_hash(item):
         return hashy
     else:
         return 'Item is a directory'
+

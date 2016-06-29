@@ -185,6 +185,9 @@ def beacon(config):
       Automatically start watching files that are created in the watched directory
     exclude:
       Exclude directories or files from triggering events in the watched directory
+
+    If pillar/grains/minion config key `pulsar_maintenance_mode` is set to
+    True, then changes will be discarded.
     '''
     ret = []
     notifier = _get_notifier()

@@ -35,7 +35,7 @@ except ImportError:
     HAS_PYINOTIFY = False
     DEFAULT_MASK = None
 
-__virtualname__ = 'inotify'
+__virtualname__ = 'pulsar'
 
 import logging
 log = logging.getLogger(__name__)
@@ -58,18 +58,18 @@ def _enqueue(revent):
     '''
     Enqueue the event
     '''
-    __context__['inotify.queue'].append(revent)
+    __context__['pulsar.queue'].append(revent)
 
 
 def _get_notifier():
     '''
     Check the context for the notifier and construct it if not present
     '''
-    if 'inotify.notifier' not in __context__:
-        __context__['inotify.queue'] = collections.deque()
+    if 'pulsar.notifier' not in __context__:
+        __context__['pulsar.queue'] = collections.deque()
         wm = pyinotify.WatchManager()
-        __context__['inotify.notifier'] = pyinotify.Notifier(wm, _enqueue)
-    return __context__['inotify.notifier']
+        __context__['pulsar.notifier'] = pyinotify.Notifier(wm, _enqueue)
+    return __context__['pulsar.notifier']
 
 
 def validate(config):
@@ -97,37 +97,37 @@ def validate(config):
         'unmount'
     ]
 
-    # Configuration for inotify beacon should be a dict of dicts
+    # Configuration for pulsar beacon should be a dict of dicts
     log.debug('config {0}'.format(config))
     if not isinstance(config, dict):
-        return False, 'Configuration for inotify beacon must be a dictionary.'
+        return False, 'Configuration for pulsar beacon must be a dictionary.'
     else:
         for config_item in config:
             if not isinstance(config[config_item], dict):
-                return False, ('Configuration for inotify beacon must '
+                return False, ('Configuration for pulsar beacon must '
                                'be a dictionary of dictionaries.')
             else:
                 if not any(j in ['mask', 'recurse', 'auto_add'] for j in config[config_item]):
-                    return False, ('Configuration for inotify beacon must '
+                    return False, ('Configuration for pulsar beacon must '
                                    'contain mask, recurse or auto_add items.')
 
             if 'auto_add' in config[config_item]:
                 if not isinstance(config[config_item]['auto_add'], bool):
-                    return False, ('Configuration for inotify beacon '
+                    return False, ('Configuration for pulsar beacon '
                                    'auto_add must be boolean.')
 
             if 'recurse' in config[config_item]:
                 if not isinstance(config[config_item]['recurse'], bool):
-                    return False, ('Configuration for inotify beacon '
+                    return False, ('Configuration for pulsar beacon '
                                    'recurse must be boolean.')
 
             if 'mask' in config[config_item]:
                 if not isinstance(config[config_item]['mask'], list):
-                    return False, ('Configuration for inotify beacon '
+                    return False, ('Configuration for pulsar beacon '
                                    'mask must be list.')
                 for mask in config[config_item]['mask']:
                     if mask not in VALID_MASK:
-                        return False, ('Configuration for inotify beacon '
+                        return False, ('Configuration for pulsar beacon '
                                        'invalid mask option {0}.'.format(mask))
     return True, 'Valid beacon configuration'
 
@@ -141,7 +141,7 @@ def beacon(config):
     .. code-block:: yaml
 
         beacons:
-          inotify:
+          pulsar:
             /path/to/file/or/dir:
               mask:
                 - open
@@ -194,7 +194,7 @@ def beacon(config):
     if notifier.check_events(1):
         notifier.read_events()
         notifier.process_events()
-        queue = __context__['inotify.queue']
+        queue = __context__['pulsar.queue']
         while queue:
             event = queue.popleft()
 
@@ -274,7 +274,7 @@ def beacon(config):
         else:
             wm.add_watch(path, mask, rec=rec, auto_add=auto_add)
 
-    if __salt__['config.get']('inotify_maintenance_mode', False):
+    if __salt__['config.get']('pulsar_maintenance_mode', False):
         # We're in maintenance mode, throw away findings
         ret = []
 
@@ -282,7 +282,7 @@ def beacon(config):
         __returners__ = salt.loader.returners(__opts__, __salt__)
         returner = '{0}.returner'.format(config['return'])
         if returner not in __returners__:
-            log.error('Could not find {0} returner for inotify beacon'.format(config['return']))
+            log.error('Could not find {0} returner for pulsar beacon'.format(config['return']))
             return ret
         for item in ret:
             __returners__[returner]({'return': item})

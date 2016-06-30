@@ -212,6 +212,11 @@ def beacon(config):
                 if path in config:
                     break
                 path = os.path.dirname(path)
+            # Get pathname
+            try:
+                pathname = event.pathname
+            except NameError:
+                pathname = path
 
             excludes = config[path].get('exclude', '')
             if excludes and isinstance(excludes, list):
@@ -228,17 +233,14 @@ def beacon(config):
                        'path': event.pathname,
                        'change': event.maskname}
 
-                if config.get('checksum', False) and os.path.isfile(path):
+                if config.get('checksum', False) and os.path.isfile(pathname):
                     sum_type = config['checksum']
                     if not isinstance(sum_type, salt.ext.six.string_types):
                         sum_type = 'sha256'
-                    sub['checksum'] = __salt__['file.get_hash'](path, sum_type)
+                    sub['checksum'] = __salt__['file.get_hash'](pathname, sum_type)
                     sub['checksum_type'] = sum_type
                 if config.get('stats', False):
-                    try:
-                        sub['stats'] = __salt__['file.stats'](event.pathname)
-                    except NameError:
-                        sub['stats'] = __salt__['file.stats'](path)
+                    sub['stats'] = __salt__['file.stats'](pathname)
 
                 ret.append(sub)
             else:

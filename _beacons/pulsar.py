@@ -294,18 +294,19 @@ def beacon(config):
 
     if ret and 'return' in config:
         __returners__ = salt.loader.returners(__opts__, __salt__)
-        returner = '{0}.returner'.format(config['return'])
-        if returner not in __returners__:
-            log.error('Could not find {0} returner for pulsar beacon'.format(config['return']))
-            return ret
-        if config.get('batch', False):
-            transformed = []
-            for item in ret:
-                transformed.append({'return': item})
-            __returners__[returner](transformed)
-        else:
-            for item in ret:
-                __returners__[returner]({'return': item})
+        for returner_mod in config['return'].split(','):
+            returner = '{0}.returner'.format(returner_mod)
+            if returner not in __returners__:
+                log.error('Could not find {0} returner for pulsar beacon'.format(config['return']))
+                return ret
+            if config.get('batch', False):
+                transformed = []
+                for item in ret:
+                    transformed.append({'return': item})
+                __returners__[returner](transformed)
+            else:
+                for item in ret:
+                    __returners__[returner]({'return': item})
         return []
     else:
         # Return event data

@@ -231,7 +231,8 @@ def beacon(config):
             if _append:
                 sub = {'tag': event.path,
                        'path': event.pathname,
-                       'change': event.maskname}
+                       'change': event.maskname,
+                       'name': event.name}
 
                 if config.get('checksum', False) and os.path.isfile(pathname):
                     sum_type = config['checksum']

@@ -174,10 +174,10 @@ def beacon(config):
                     _remove_acl(path)
 
     #Read in events since last call.  Time_frame in minutes
-    ret = _pull_events(path['win_notify_interval'])
+    ret = _pull_events(config['win_notify_interval'])
     if sys_check == 1:
-        ret.append('The ACLs were not setup correctly, or global auditing is not enabled.  This could have 
-                   been remedied, but GP might need to changed')
+        ret.append('The ACLs were not setup correctly, or global auditing is not enabled.  This could have'
+                   'been remedied, but GP might need to changed')
     return ret
 
 
@@ -195,10 +195,19 @@ def _check_acl(path, mask, wtype, recurse):
         success = False
         return success
     audit_acl = audit_acl.replace('\r','').split('\n')
+    newlines= []
+    count = 0
     for line in audit_acl:
+        if ':' not in line and count > 0:
+            newlines[count-1] += line.strip()
+        else:
+            newlines.append(line)
+            count += 1
+    for line in newlines:
         if line:
-            d = line.split(':')
-            audit_dict[d[0].strip()] = d[1].strip()
+            if ':' in line:
+                d = line.split(':')
+                audit_dict[d[0].strip()] = d[1].strip()
     for item in mask:
         if item not in audit_dict['FileSystemRights']:
             success = False
@@ -240,10 +249,10 @@ def _add_acl(path, mask, wtype, recurse):
     else:
         audit_type = wtype
     propagation_flags = 'None'
-    __salt__['cmd.run']('$accessrule = New-Object System.Security.AccessControl.FileSystemAuditRule('
-                                  '"{0}","{1}","{2}","{3}","{4}"); $acl = Get-Acl {5}; $acl.SetAuditRule($accessrule); '
-                                  '$acl | Set-Acl {5}'.format(audit_user, audit_rules, inherit_type, propagation_flags,
-                                                              audit_type, path), shell='powershell', python_shell=True)
+    __salt__['cmd.run']('$accessrule = New-Object System.Security.AccessControl.FileSystemAuditRule("{0}","{1}","{2}",'
+                        '"{3}","{4}"); $acl = (Get-Item {5}).GetAccessControl("Access");$acl.SetAuditRule($accessrule);'
+                        '$acl | Set-Acl {5}'.format(audit_user, audit_rules, inherit_type, propagation_flags, audit_type,
+                                                    path), shell='powershell', python_shell=True)
     return 'ACL set up for {0} - with {1} user, {2} rules, {3} audit_type, and recurse is {4}'.format(path, audit_user, 
                                                                                                       audit_rules,
                                                                                                       audit_type, recurse)

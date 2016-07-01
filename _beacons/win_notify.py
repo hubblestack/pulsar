@@ -147,6 +147,15 @@ def beacon(config):
     :return:
     '''
     ret = []
+    sys_check = 0
+
+    # Validate Global Auditing with Auditpol
+    global_check = __salt__['cmd.run']('auditpol /get /category:"Object Access" /r | find "File System"',
+                                       python_shell=True)
+    if global_check:
+        if not 'Success and Failure' in global_check:
+            __salt__['cmd.run']('auditpol /set /subcategory:"file system" /success:enable /failure:enable')
+            sys_check = 1
 
     # Validate ACLs on watched folders/files and add if needed
     for path in config:
@@ -158,11 +167,15 @@ def beacon(config):
                 success = _check_acl(path, mask, wtype, recurse)
                 if not success:
                     confirm = _add_acl(path, mask, wtype, recurse)
+                    sys_check = 1
                 if config[path].get('exclude', False):
                     _remove_acl(path)
 
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events('-5')
+    if sys_check == 1:
+        ret.append('The ACLs were not setup correctly, or global auditing is not enabled.  This could have 
+                   been remedied, but GP might need to changed')
     return ret
 
 

@@ -152,7 +152,11 @@ def beacon(config):
               exclude:
                 - /path/to/file/or/dir/exclude1
                 - /path/to/file/or/dir/exclude2
-            return: splunk
+            return:
+              splunk:
+                batch: True
+              slack:
+                batch: False  # overrides the global setting
             checksum: sha256
             stats: True
             batch: True
@@ -294,12 +298,21 @@ def beacon(config):
 
     if ret and 'return' in config:
         __returners__ = salt.loader.returners(__opts__, __salt__)
-        for returner_mod in config['return'].split(','):
+        return_config = config['return']
+        if isinstance(return_config, salt.ext.six.string_types):
+            tmp = {}
+            for conf in return_config.split(','):
+                tmp[conf] = None
+            return_config = tmp
+        for returner_mod in return_config:
             returner = '{0}.returner'.format(returner_mod)
             if returner not in __returners__:
                 log.error('Could not find {0} returner for pulsar beacon'.format(config['return']))
                 return ret
-            if config.get('batch', False):
+            batch_config = config.get('batch')
+            if isinstance(return_config[returner_mod], dict) and return_config[returner_mod].get('batch'):
+                batch_config = True
+            if batch_config:
                 transformed = []
                 for item in ret:
                     transformed.append({'return': item})

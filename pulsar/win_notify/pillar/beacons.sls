@@ -2,5 +2,6 @@ beacons:
   win_notify:
     C:/Users:
 
-  interval: 300 # Do not change.  Hard coded into win_notify
+    win_notify_interval: 300  # MUST be the same as interval
+    interval: 300  # MUST be the same as win_notify_interval
       

@@ -159,6 +159,8 @@ def beacon(config):
 
     # Validate ACLs on watched folders/files and add if needed
     for path in config:
+        if path == 'win_notify_interval':
+            continue
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)
             wtype = config[path].get('wtype', DEFAULT_TYPE)
@@ -172,7 +174,7 @@ def beacon(config):
                     _remove_acl(path)
 
     #Read in events since last call.  Time_frame in minutes
-    ret = _pull_events('-5')
+    ret = _pull_events(path['win_notify_interval'])
     if sys_check == 1:
         ret.append('The ACLs were not setup correctly, or global auditing is not enabled.  This could have 
                    been remedied, but GP might need to changed')
@@ -264,7 +266,7 @@ def _remove_acl(path):
 
 def _pull_events(time_frame):
     events_list = []
-    events_output = __salt__['cmd.run_stdout']('Get-EventLog -LogName Security -After ((Get-Date).AddMinutes({0})) '
+    events_output = __salt__['cmd.run_stdout']('Get-EventLog -LogName Security -After ((Get-Date).AddSeconds(-{0})) '
                                         '-InstanceId 4663 | fl'.format(time_frame), shell='powershell',
                                         python_shell=True)
     events = events_output.split('\n\n')

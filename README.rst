@@ -9,7 +9,7 @@ reporting.
 In other words, you can recieve real-time alerts for unscheduled file system modifications *anywhere* you
 want to recieve them.
 
-SPM Packages (Recommended)
+Installation (Recommended)
 ==========================
 
 Each of the four HubbleStack components have been packaged for use with Salt's

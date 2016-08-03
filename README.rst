@@ -75,13 +75,13 @@ fileserver (whether roots or gitfs) and sync it to the minion(s).
     cp _beacons/pulsar.py /srv/salt/_beacons/
     salt \* saltutil.sync_beacons
 
-Copy the ``hubblestack_pulsar.sls`` into your Salt pillar and target it to selected minions.
+Copy the ``hubble_pulsar.sls`` into your Salt pillar and target it to selected minions.
 
 .. code-block:: shell
 
     base:
       '*':
-        - hubblestack_pulsar
+        - hubble_pulsar
 
 .. code-block:: shell
 
@@ -96,7 +96,7 @@ with it. It simply runs quietly in the background and sends you alerts.
 Pulsar Configuration
 ====================
 
-The default Pulsar configuration (found in ``<pillar/hubblestack_pulsar.sls>``
+The default Pulsar configuration (found in ``<pillar/hubble_pulsar.sls>``
 is meant to act as a template. Every environment will have different needs and
 requirements, and we understand that, so we've designed Pulsar to be flexible.
 
@@ -113,14 +113,27 @@ requirements, and we understand that, so we've designed Pulsar to be flexible.
          /usr/local/bin: { recurse: True, auto_add: True }
          /usr/local/sbin: { recurse: True, auto_add: True }
          
-         return:
-           splunk:
-             batch: True
-           slack:
-             batch: False
-         stats: True
-         batch: True
+         return: slack_pulsar
          checksum: sha256
+         stats: True
+         batch: False
+
+In order to receive Pulsar notifications you'll need to install the custom
+returners found in the Quasar_ repo.
+
+.. _Quasar:: https://github.com/HubbleStack/Quasar
+
+Example of using the Slack Pulsar returner to recieve FIM notifications:
+
+.. code-block:: yaml
+
+    slack_pulsar:
+      as_user: true
+      username: calculon
+      channel: hubble_pulsar
+      api_key: xoxo-xxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxx
+
+.. tip:: If you need to create a Slack bot, see: https://my.slack.com/services/new/bot
 
 Excluding Paths
 ===============

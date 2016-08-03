@@ -1,3 +1,5 @@
-hubblestack.nova.verbose: False
-hubblestack.nova.show_success: False
-hubblestack.nova.show_compliance: True
+hubblestack:
+  nova:
+    verbose: False
+    show_success: False
+    show_compliance: True

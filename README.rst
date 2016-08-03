@@ -1,23 +1,29 @@
 HubbleStack Pulsar
 ==================
 
-Pulsar is designed to monitor for file system events, acting as a real-time File 
-Integrity Monitoring (FIM) agent. Pulsar is composed of a custom Salt beacon
-that watches for these events and hooks into the returner system for alerting and 
-reporting.
+Pulsar is designed to monitor for file system events, acting as a real-time
+File Integrity Monitoring (FIM) agent. Pulsar is composed of a custom Salt
+beacon that watches for these events and hooks into the returner system for
+alerting and reporting.
 
-In other words, you can recieve real-time alerts for unscheduled file system modifications *anywhere* you
-want to recieve them.
+In other words, you can recieve real-time alerts for unscheduled file system
+modifications *anywhere* you want to recieve them.
 
-Installation (Recommended)
-==========================
+Two different methods are outlined below. The first method is more stable (and
+therefore recommended). This method uses Salt's package manager to track
+versioned, packaged updates to Hubble's components.
+
+The second method installs directly from git. It should be considered bleeding
+edge and possibly unstable.
+
+Installation
+============
 
 Each of the four HubbleStack components have been packaged for use with Salt's
 Package Manager (SPM). Note that all SPM installation commands should be done
 on the *Salt Master*.
 
-Required Configuration
-----------------------
+**Required Configuration**
 
 Salt's Package Manager (SPM) installs files into `/srv/spm/{salt,pillar}`.
 Ensure that this path is defined in your Salt Master's `file_roots`:
@@ -31,8 +37,8 @@ Ensure that this path is defined in your Salt Master's `file_roots`:
 Note: Remember to restart the Salt Master after making this change to the
 configuration.
 
-Installation
-------------
+Installation (Packages)
+-----------------------
 
 Installation is as easy as downloading and installing a package. (Note: in
 future releases you'll be able to subscribe directly to our HubbleStack SPM
@@ -52,8 +58,10 @@ You should now be able to sync the new modules to your minion(s) using the
 
 Once these modules are synced you are ready to begin running the Pulsar beacon.
 
+Skip to [Usage].
+
 Installation (Manual)
-=====================
+---------------------
 
 Place ``pulsar.py <_beacons/pulsar.py>`` in your ``_beacons/`` directory in your Salt
 fileserver (whether roots or gitfs) and sync it to the minion(s).
@@ -62,6 +70,7 @@ fileserver (whether roots or gitfs) and sync it to the minion(s).
 
     git clone https://github.com/hubblestack/pulsar.git hubblestack-pulsar.git
     cd hubblestack-pulsar.git
+    mkdir -p /srv/salt/_beacons/
     cp _beacons/pulsar.py /srv/salt/_beacons/
     salt \* saltutil.sync_beacons
 
@@ -81,11 +90,10 @@ Usage
 =====
 
 Once Pulsar is fully running there isn't anything you need to do to interact
-with it. It simply runs quietly in the background and sends you alerts. That's
-all!
+with it. It simply runs quietly in the background and sends you alerts.
 
 Pulsar Configuration
---------------------
+====================
 
 The default Pulsar configuration (found in ``<pillar/hubblestack_pulsar.sls>``
 is meant to act as a template. Every environment will have different needs and
@@ -114,7 +122,7 @@ requirements, and we understand that, so we've designed Pulsar to be flexible.
          checksum: sha256
 
 Excluding Paths
----------------
+===============
 
 There may be certain paths that you want to exclude from this real-time
 FIM tool. This can be done using the ``exclude:`` keyword beneath any
@@ -123,13 +131,15 @@ defined path.
 .. code-block:: yaml
 
     beacons:
-       pulsar:
-         /var: { recurse: True, auto_add: True }
-           exclude:
-             - /var/log
-             - /var/spool
-             - /var/cache
-             - /var/lock
+      pulsar:
+        /var:
+          recurse: True
+          auto_add: True
+          exclude:
+            - /var/log
+            - /var/spool
+            - /var/cache
+            - /var/lock
 
 Contribute
 ==========

@@ -121,7 +121,7 @@ requirements, and we understand that, so we've designed Pulsar to be flexible.
 In order to receive Pulsar notifications you'll need to install the custom
 returners found in the Quasar_ repo.
 
-.. _Quasar:: https://github.com/HubbleStack/Quasar
+.. _Quasar: https://github.com/HubbleStack/Quasar
 
 Example of using the Slack Pulsar returner to recieve FIM notifications:
 

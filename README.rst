@@ -1,5 +1,5 @@
-HubbleStack Pulsar
-==================
+Introduction
+============
 
 Pulsar is designed to monitor for file system events, acting as a real-time
 File Integrity Monitoring (FIM) agent. Pulsar is composed of a custom Salt

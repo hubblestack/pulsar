@@ -38,7 +38,7 @@ Ensure that this path is defined in your Salt Master's `file_roots`:
 
 .. note:: This should be the default value. To verify run: `salt-call config.get file_roots`
 
-.. note:: Remember to restart the Salt Master after making this change to the configuration.
+.. tip:: Remember to restart the Salt Master after making this change to the configuration.
 
 Installation (Packages)
 -----------------------
@@ -95,8 +95,8 @@ Usage
 Once Pulsar is fully running there isn't anything you need to do to interact
 with it. It simply runs quietly in the background and sends you alerts.
 
-Pulsar Configuration
-====================
+Configuration
+=============
 
 The default Pulsar configuration (found in ``<pillar/hubble_pulsar.sls>``
 is meant to act as a template. Every environment will have different needs and

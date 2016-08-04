@@ -42,9 +42,24 @@ Ensure that this path is defined in your Salt Master's `file_roots`:
       - /srv/salt
       - /srv/spm/salt
 
-.. note:: This should be the default value. To verify run: `salt-call config.get file_roots`
+.. note:: This should be the default value. To verify, run: `salt-call config.get file_roots`
 
-.. tip:: Remember to restart the Salt Master after making this change to the configuration.
+.. tip:: Remember to restart the Salt Master after making any change to the configuration.
+
+**Required Packages**
+
+There is a hard requirement on the ``pyinotify`` Python library for each minion
+that will run the Pulsar FIM beacon.
+
+** Red Hat / CentOS **
+.. code-block:: shell
+
+    salt \* pkg.install python-inotify
+
+** Debian / Ubuntu **
+.. code-block:: shell
+
+    salt \* pkg.install python-pyinotify
 
 Installation (Packages)
 -----------------------
@@ -64,6 +79,19 @@ You should now be able to sync the new modules to your minion(s) using the
 .. code-block:: shell
 
     salt \* saltutil.sync_beacons
+
+Copy the ``hubble_pulsar.sls.orig`` into your Salt pillar, dropping the
+``.orig`` extension and target it to selected minions.
+
+.. code-block:: shell
+
+    base:
+      '*':
+        - hubble_pulsar
+
+.. code-block:: shell
+
+    salt \* saltutil.refresh_pillar
 
 Once these modules are synced you are ready to begin running the Pulsar beacon.
 
@@ -127,9 +155,7 @@ requirements, and we understand that, so we've designed Pulsar to be flexible.
          batch: False
 
 In order to receive Pulsar notifications you'll need to install the custom
-returners found in the Quasar_ repo.
-
-.. _Quasar: https://github.com/HubbleStack/Quasar
+returners found in the Quasar_
 
 Example of using the Slack Pulsar returner to recieve FIM notifications:
 
@@ -166,8 +192,40 @@ defined path.
 Under The Hood
 ==============
 
+Pulsar is written as a Salt beacon, which requires the ``salt-minion`` daemon
+to be running. This then acts as an agent that watches for file system events
+using Linux's ``inotify`` subsystem.
+
 Development
 ===========
+
+If you're interested in contributing to this project this section outlines the
+structure and requirements for Pulsar agent module development.
+
+Anatomy of a Pulsar module
+--------------------------
+
+.. code-block:: python
+
+    # -*- encoding: utf-8 -*-
+    '''
+    Pulsar agent
+
+    :maintainer: HubbleStack / owner
+    :maturity: 20160804
+    :platform: Linux
+    :requires: SaltStack
+
+    '''
+    from __future__ import absolute_import
+    import logging
+
+All Pulsar agents should include the above header, expanding the docstring to
+include full documentation
+
+Any Pulsar agent should be written as a beacon and send its return data
+directly to the Quasar_ endpoint(s). No communication with the master is
+required.
 
 Contribute
 ==========

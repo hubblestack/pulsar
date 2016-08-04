@@ -51,12 +51,14 @@ Ensure that this path is defined in your Salt Master's `file_roots`:
 There is a hard requirement on the ``pyinotify`` Python library for each minion
 that will run the Pulsar FIM beacon.
 
-** Red Hat / CentOS **
+**Red Hat / CentOS**
+
 .. code-block:: shell
 
     salt \* pkg.install python-inotify
 
-** Debian / Ubuntu **
+**Debian / Ubuntu**
+
 .. code-block:: shell
 
     salt \* pkg.install python-pyinotify

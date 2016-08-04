@@ -11,6 +11,12 @@ alerting and reporting.
 In other words, you can recieve real-time alerts for unscheduled file system
 modifications *anywhere* you want to recieve them.
 
+We've designed Pulsar to be lightweight and not dependent on a Salt Master. It
+simply watches for events and directly sends them to one of the Pulsar
+returner destinations (see the Quasar_ repository for more on these).
+
+.. _Quasar: https://github.com/hubblestack/quasar
+
 Two different installation methods are outlined below. The first method is more
 stable (and therefore recommended). This method uses Salt's package manager to
 track versioned, packaged updates to Hubble's components.

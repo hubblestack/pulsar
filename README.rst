@@ -1,6 +1,8 @@
 Introduction
 ============
 
+Is your infrastructure immutable? Are you sure?
+
 Pulsar is designed to monitor for file system events, acting as a real-time
 File Integrity Monitoring (FIM) agent. Pulsar is composed of a custom Salt
 beacon that watches for these events and hooks into the returner system for

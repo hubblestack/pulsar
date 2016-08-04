@@ -138,7 +138,7 @@ Example of using the Slack Pulsar returner to recieve FIM notifications:
 .. tip:: If you need to create a Slack bot, see: https://my.slack.com/services/new/bot
 
 Excluding Paths
-===============
+---------------
 
 There may be certain paths that you want to exclude from this real-time
 FIM tool. This can be done using the ``exclude:`` keyword beneath any
@@ -156,6 +156,12 @@ defined path.
             - /var/spool
             - /var/cache
             - /var/lock
+
+Under The Hood
+==============
+
+Development
+===========
 
 Contribute
 ==========

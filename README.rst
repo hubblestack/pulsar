@@ -9,9 +9,9 @@ alerting and reporting.
 In other words, you can recieve real-time alerts for unscheduled file system
 modifications *anywhere* you want to recieve them.
 
-Two different methods are outlined below. The first method is more stable (and
-therefore recommended). This method uses Salt's package manager to track
-versioned, packaged updates to Hubble's components.
+Two different installation methods are outlined below. The first method is more
+stable (and therefore recommended). This method uses Salt's package manager to
+track versioned, packaged updates to Hubble's components.
 
 The second method installs directly from git. It should be considered bleeding
 edge and possibly unstable.

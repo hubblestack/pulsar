@@ -82,14 +82,14 @@ You should now be able to sync the new modules to your minion(s) using the
 
     salt \* saltutil.sync_beacons
 
-Copy the ``hubble_pulsar.sls.orig`` into your Salt pillar, dropping the
+Copy the ``hubblestack_pulsar.sls.orig`` into your Salt pillar, dropping the
 ``.orig`` extension and target it to selected minions.
 
 .. code-block:: shell
 
     base:
       '*':
-        - hubble_pulsar
+        - hubblestack_pulsar
 
 .. code-block:: shell
 
@@ -113,13 +113,13 @@ fileserver (whether roots or gitfs) and sync it to the minion(s).
     cp _beacons/pulsar.py /srv/salt/_beacons/
     salt \* saltutil.sync_beacons
 
-Copy the ``hubble_pulsar.sls`` into your Salt pillar and target it to selected minions.
+Copy the ``hubblestack_pulsar.sls`` into your Salt pillar and target it to selected minions.
 
 .. code-block:: shell
 
     base:
       '*':
-        - hubble_pulsar
+        - hubblestack_pulsar
 
 .. code-block:: shell
 
@@ -134,7 +134,7 @@ with it. It simply runs quietly in the background and sends you alerts.
 Configuration
 =============
 
-The default Pulsar configuration (found in ``<pillar/hubble_pulsar.sls>``
+The default Pulsar configuration (found in ``<pillar/hubblestack_pulsar.sls>``
 is meant to act as a template. Every environment will have different needs and
 requirements, and we understand that, so we've designed Pulsar to be flexible.
 

@@ -33,8 +33,8 @@ on the *Salt Master*.
 
 **Required Configuration**
 
-Salt's Package Manager (SPM) installs files into `/srv/spm/{salt,pillar}`.
-Ensure that this path is defined in your Salt Master's `file_roots`:
+Salt's Package Manager (SPM) installs files into ``/srv/spm/{salt,pillar}``.
+Ensure that this path is defined in your Salt Master's ``file_roots``:
 
 .. code-block:: yaml
 
@@ -42,7 +42,7 @@ Ensure that this path is defined in your Salt Master's `file_roots`:
       - /srv/salt
       - /srv/spm/salt
 
-.. note:: This should be the default value. To verify, run: `salt-call config.get file_roots`
+.. note:: This should be the default value. To verify, run: ``salt-call config.get file_roots``
 
 .. tip:: Remember to restart the Salt Master after making any change to the configuration.
 
@@ -76,7 +76,7 @@ repo for updates and bugfixes!)
     spm local install hubblestack_pulsar-2016.7.0_RC1-1.spm
 
 You should now be able to sync the new modules to your minion(s) using the
-`sync_modules` Salt utility:
+``sync_modules`` Salt utility:
 
 .. code-block:: shell
 
@@ -102,8 +102,8 @@ Skip to [Usage].
 Installation (Manual)
 ---------------------
 
-Place ``pulsar.py <_beacons/pulsar.py>`` in your ``_beacons/`` directory in your Salt
-fileserver (whether roots or gitfs) and sync it to the minion(s).
+Place ``_beacons/pulsar.py`` into your ``_beacons/`` directory, and sync it to
+the minions.
 
 .. code-block:: shell
 

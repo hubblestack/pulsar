@@ -111,9 +111,10 @@ the minions.
     cd hubblestack-pulsar.git
     mkdir -p /srv/salt/_beacons/
     cp _beacons/pulsar.py /srv/salt/_beacons/
+    cp pillar.example /srv/pillar/hubblestack_pulsar.sls
     salt \* saltutil.sync_beacons
 
-Copy the ``hubblestack_pulsar.sls`` into your Salt pillar and target it to selected minions.
+Target the copied ``hubblestack_pulsar.sls`` to selected minions.
 
 .. code-block:: shell
 

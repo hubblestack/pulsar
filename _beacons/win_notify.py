@@ -152,6 +152,8 @@ def beacon(config):
     # Validate Global Auditing with Auditpol
     global_check = __salt__['cmd.run']('auditpol /get /category:"Object Access" /r | find "File System"',
                                        python_shell=True)
+    LOG.error('****global_check***')
+    LOG.error(global_check)
     if global_check:
         if not 'Success and Failure' in global_check:
             __salt__['cmd.run']('auditpol /set /subcategory:"file system" /success:enable /failure:enable')
@@ -169,7 +171,7 @@ def beacon(config):
                 success = _check_acl(path, mask, wtype, recurse)
                 if not success:
                     confirm = _add_acl(path, mask, wtype, recurse)
-                    LOG.error('*****************')
+                    LOG.error('******confirm******')
                     LOG.error(confirm)
                     sys_check = 1
                 if config[path].get('exclude', False):
@@ -256,7 +258,7 @@ def _add_acl(path, mask, wtype, recurse):
      $ace2.AccessMask = 2032127 # [System.Security.AccessControl.FileSystemRights]::FullControl
      $ace2.AceFlags = 131 #  FAILED_ACCESS_ACE_FLAG (128), CONTAINER_INHERIT_ACE (2), OBJECT_INHERIT_ACE (1)
      $ace2.AceType =2 # Audit
-     $ace2.Trustee = $trustee
+     $ace2.Trustee = $Trustee
   
      $SD.SACL += $ace1.psobject.baseobject
      $SD.SACL += $ace2.psobject.baseobject
@@ -309,7 +311,7 @@ def _add_acl(path, mask, wtype, recurse):
     This calls The function _get_ace_translation() to return the number it needs to set.
     :return:
     '''
-    path = path.replace('\','\\')
+    path = path.replace('\\','\\\\')
     audit_user = 'Everyone'
     audit_rules = ','.join(mask)
     if recurse:
@@ -323,20 +325,20 @@ def _add_acl(path, mask, wtype, recurse):
     flags = _get_ace_translation(inherit_type, audit_type)
     
     __salt__['cmd.run']('$SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance();'
-                        '$Trustee = ([WMIClass] “Win32_Trustee").CreateInstance();'
+                        '$Trustee = ([WMIClass] "Win32_Trustee").CreateInstance();'
                         '$ace = ([WMIClass] "Win32_ace").CreateInstance();'
-                        '$SID = (new-object security.principal.ntaccount $user).translate([security.principal.securityidentifier]);'
+                        '$SID = (new-object System.Security.Principal.NTAccount {0}).translate([security.principal.securityidentifier]);'
                         '[byte[]] $SIDArray = ,0 * $SID.BinaryLength;'
                         '$SID.GetBinaryForm($SIDArray,0);'
-                        '$Trustee.Name = {0};'
+                        '$Trustee.Name = "{0}";'
                         '$Trustee.SID = $SIDArray;'
                         '$ace.AccessMask = {1};'
                         '$aceAceFlags = {2};'
                         '$ace.AceType = 2;'
-                        '$ace1.Trustee = $trustee;'
+                        '$ace.Trustee = $Trustee;'
                         '$SD.SACL += $ace.psobject.baseobject;'
                         '$SD.ControlFlags=16;'
-                        '$wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path=\’{3}\’” -EnableAllPrivileges;'
+                        '$wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path=\'{3}\'" -EnableAllPrivileges;'
                         '$wPrivilege.setsecuritydescriptor($SD)'.format(audit_user, access_mask, flags, path),
                          shell='powershell', python_shell=True)
     return 'ACL set up for {0} - with {1} user, {2} access mask, {3} flags'.format(path, audit_user, access_mask, flags)
@@ -350,9 +352,11 @@ def _remove_acl(path):
     :param item:
     :return:
     '''
+    LOG.error('***path***')
+    LOG.error(path)
     command = __salt__['cmd.run']('$acl = Get-Acl ${0}; $acl.GEtAuditRules($True, $False, '
                                 '[System.Security.Principal.SecurityIdentifier]) | Foreach-Object '
-                                '{ $acl.RemoveAuditRule($_); }); Set-Acl ${0} $acl'.format(path), shell='powershell',
+                                '{{ $acl.RemoveAuditRule($_); }}); Set-Acl ${0} $acl'.format(path), shell='powershell',
                                 python_shell=True)
 
 

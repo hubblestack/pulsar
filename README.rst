@@ -1,3 +1,5 @@
+.. _pulsar_introduction:
+
 Introduction
 ============
 
@@ -24,6 +26,8 @@ track versioned, packaged updates to Hubble's components.
 The second method installs directly from git. It should be considered bleeding
 edge and possibly unstable.
 
+.. _pulsar_installation:
+
 Installation
 ============
 
@@ -31,7 +35,10 @@ Each of the four HubbleStack components have been packaged for use with Salt's
 Package Manager (SPM). Note that all SPM installation commands should be done
 on the *Salt Master*.
 
-**Required Configuration**
+.. _pulsar_installation_required_configuration:
+
+Required Configuration
+----------------------
 
 Salt's Package Manager (SPM) installs files into ``/srv/spm/{salt,pillar}``.
 Ensure that this path is defined in your Salt Master's ``file_roots``:
@@ -46,22 +53,33 @@ Ensure that this path is defined in your Salt Master's ``file_roots``:
 
 .. tip:: Remember to restart the Salt Master after making any change to the configuration.
 
-**Required Packages**
+.. _pulsar_installation_required_packages:
+
+Required Packages
+-----------------
 
 There is a hard requirement on the ``pyinotify`` Python library for each minion
 that will run the Pulsar FIM beacon.
 
-**Red Hat / CentOS**
+.. _pulsar_installation_rhel:
+
+Red Hat / CentOS
+~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
     salt \* pkg.install python-inotify
 
-**Debian / Ubuntu**
+.. _pulsar_installation_deb:
+
+Debian / Ubuntu
+~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
     salt \* pkg.install python-pyinotify
+
+.. _pulsar_installation_packages:
 
 Installation (Packages)
 -----------------------
@@ -97,7 +115,9 @@ Copy the ``hubblestack_pulsar.sls.orig`` into your Salt pillar, dropping the
 
 Once these modules are synced you are ready to begin running the Pulsar beacon.
 
-Skip to [Usage].
+Skip to :ref:`Usage <pulsar_usage>`.
+
+.. _pulsar_installation_manual:
 
 Installation (Manual)
 ---------------------
@@ -126,11 +146,15 @@ Target the copied ``hubblestack_pulsar.sls`` to selected minions.
 
     salt \* saltutil.refresh_pillar
 
+.. _pulsar_usage:
+
 Usage
 =====
 
 Once Pulsar is fully running there isn't anything you need to do to interact
 with it. It simply runs quietly in the background and sends you alerts.
+
+.. _pulsar_configuration:
 
 Configuration
 =============
@@ -172,6 +196,8 @@ Example of using the Slack Pulsar returner to recieve FIM notifications:
 
 .. tip:: If you need to create a Slack bot, see: https://my.slack.com/services/new/bot
 
+.. _pulsar_configuration_excluding_paths:
+
 Excluding Paths
 ---------------
 
@@ -192,6 +218,8 @@ defined path.
             - /var/cache
             - /var/lock
 
+.. _pulsar_under_the_hood:
+
 Under The Hood
 ==============
 
@@ -199,11 +227,15 @@ Pulsar is written as a Salt beacon, which requires the ``salt-minion`` daemon
 to be running. This then acts as an agent that watches for file system events
 using Linux's ``inotify`` subsystem.
 
+.. _pulsar_development:
+
 Development
 ===========
 
 If you're interested in contributing to this project this section outlines the
 structure and requirements for Pulsar agent module development.
+
+.. _pulsar_anatomy_of_a_pulsar_module:
 
 Anatomy of a Pulsar module
 --------------------------
@@ -229,6 +261,8 @@ include full documentation
 Any Pulsar agent should be written as a beacon and send its return data
 directly to the Quasar_ endpoint(s). No communication with the master is
 required.
+
+.. _pulsar_contribute:
 
 Contribute
 ==========

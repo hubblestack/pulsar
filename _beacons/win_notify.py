@@ -12,11 +12,13 @@ import datetime
 import fnmatch
 import logging
 import os
+import glob
 
 import salt.ext.six
 
 LOG = logging.getLogger(__name__)
-DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 'Takeownership']
+DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 
+                'TakeOwnership'] #ExecuteFile Is really chatty
 DEFAULT_TYPE = 'all'
 
 __virtualname__ = 'win_notify'
@@ -59,7 +61,6 @@ def validate(config):
         'fail'
     ]
     # Configuration for win_notify beacon should be a dict of dicts
-    log.debug('config {0}'.format(config))
     if not isinstance(config, dict):
         return False, 'Configuration for win_notify beacon must be a dictionary.'
     else:
@@ -110,7 +111,7 @@ def beacon(config):
             recurse: True
             exclude:
               - /path/to/file/or/dir/exclude1
-              - /path/to/file/or/dir/exclude2
+              - /path/to/*/file/or/dir/*/exclude2
 
     The mask list can contain the following events (the default mask is create, delete, and modify):
 
@@ -171,13 +172,20 @@ def beacon(config):
                     confirm = _add_acl(path, mask, wtype, recurse)
                     sys_check = 1
                 if config[path].get('exclude', False):
-                    _remove_acl(path)
+                    for exclude in config[path]['exclude']:
+                        if '*' in exclude:
+                            for wildcard_exclude in glob.iglob(exclude):
+                                _remove_acl(wildcard_exclude)
+                        else:
+                            _remove_acl(exclude)
 
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events(config['win_notify_interval'])
     if sys_check == 1:
-        ret.append('The ACLs were not setup correctly, or global auditing is not enabled.  This could have'
-                   'been remedied, but GP might need to changed')
+        problem = {}
+        problem['error'] = 'The ACLs were not setup correctly, or global auditing is not enabled.  This could have' \
+                   'been remedied, bug GP might need to be changed'
+        ret.append(problem)
     return ret
 
 
@@ -229,33 +237,115 @@ def _check_acl(path, mask, wtype, recurse):
 
 def _add_acl(path, mask, wtype, recurse):
     '''
-    This will apply the needed audit ALC to the folder in question using PowerShell with the code below:
-      $AccessRule = New-Object System.Security.AccessControl.FileSystemAuditRule($AuditUser,$AuditRules,$InheritType,
-                    $PropagationFlags,$AuditType)
-      $ACL = Get-Acl -Audit $TargetFolder
-      $ACL.SetAuditRule($AccessRule)
-      $ACL | Set-Acl $TargetFolder
+    This will apply the needed audit ALC to the folder in question using PowerShells access to the .net library and
+    WMI with the code below:
+     $path = "C:\Path\here"
+     $path = path.replace("\","\\")
+     $user = "Everyone"
 
+     $SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance()
+     $Trustee = ([WMIClass] "Win32_Trustee").CreateInstance()
+ 
+     # One for Success and other for Failure events
+     $ace1 = ([WMIClass] "Win32_ace").CreateInstance()
+     $ace2 = ([WMIClass] "Win32_ace").CreateInstance()
+ 
+     $SID = (new-object security.principal.ntaccount $user).translate([security.principal.securityidentifier])
+ 
+     [byte[]] $SIDArray = ,0 * $SID.BinaryLength
+     $SID.GetBinaryForm($SIDArray,0)
+ 
+     $Trustee.Name = $user
+     $Trustee.SID = $SIDArray
+
+    # Auditing
+     $ace2.AccessMask = 2032127 # [System.Security.AccessControl.FileSystemRights]::FullControl
+     $ace2.AceFlags = 131 #  FAILED_ACCESS_ACE_FLAG (128), CONTAINER_INHERIT_ACE (2), OBJECT_INHERIT_ACE (1)
+     $ace2.AceType =2 # Audit
+     $ace2.Trustee = $Trustee
+  
+     $SD.SACL += $ace1.psobject.baseobject
+     $SD.SACL += $ace2.psobject.baseobject
+     $SD.ControlFlags=16  
+     $wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path='$path'" -EnableAllPrivileges
+     $wPrivilege.setsecuritydescriptor($SD)
+
+    The ACE accessmask map key is below:
+   
+     1.  ReadData                        - 1
+     2.  CreateFiles                     - 2
+     3.  AppendData                      - 4
+     4.  ReadExtendedAttributes          - 8
+     5.  WriteExtendedAttributes         - 16
+     6.  ExecuteFile                     - 32 
+     7.  DeleteSubdirectoriesAndFiles    - 64
+     8.  ReadAttributes                  - 128
+     9.  WriteAttributes                 - 256
+     10. Write                           - 278    (Combo of CreateFiles, AppendData, WriteAttributes, WriteExtendedAttributes)
+     11. Delete                          - 65536
+     12. ReadPermissions                 - 131072
+     13. ChangePermissions               - 262144
+     14. TakeOwnership                   - 524288
+     15. Read                            - 131209 (Combo of ReadData, ReadAttributes, ReadExtendedAttributes, ReadPermissions)
+     16. ReadAndExecute                  - 131241 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes,
+                                                   ReadPermissions)
+     17. Modify                          - 197055 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes, 
+                                                   CreateFiles, AppendData, WriteAttributes, WriteExtendedAttributes, 
+                                                   Delete, ReadPermissions)
+    The Ace flags map key is below:
+     1. ObjectInherit                    - 1 
+     2. ContainerInherit                 - 2
+     3. NoPorpagateInherit               - 4
+     4. SuccessfulAccess                 - 64  (Used with System-audit to generate audit messages for successful access 
+                                                attempts)
+     5. FailedAccess                     - 128 (Used with System-audit to generate audit messages for Failed access attempts)
+
+    The Ace type map key is below:
+     1. Access Allowed                   - 0
+     2. Access Denied                    - 1
+     3. Audit                            - 2
+
+    If you want multiple values you just add them together to get a desired outcome:
+     ACCESSMASK of file_add_file, file_add_subdirectory, delete, file_delete_child, write_dac, write_owner:
+     852038 =           2       +           4          + 65536 +        64        +   262144i
+    
+     FLAGS of ObjectInherit, ContainerInherit, SuccessfullAccess, FailedAccess:
+     195 =         1       +        2        +        64        +      128
+
+    This calls The function _get_ace_translation() to return the number it needs to set.
     :return:
     '''
+    path = path.replace('\\','\\\\')
     audit_user = 'Everyone'
     audit_rules = ','.join(mask)
     if recurse:
         inherit_type = 'ContainerInherit,ObjectInherit'
-    else:
-        inherit_type = 'None'
     if 'all' in wtype:
         audit_type = 'Success,Failure'
     else:
         audit_type = wtype
-    propagation_flags = 'None'
-    __salt__['cmd.run']('$accessrule = New-Object System.Security.AccessControl.FileSystemAuditRule("{0}","{1}","{2}",'
-                        '"{3}","{4}"); $acl = (Get-Item {5}).GetAccessControl("Access");$acl.SetAuditRule($accessrule);'
-                        '$acl | Set-Acl {5}'.format(audit_user, audit_rules, inherit_type, propagation_flags, audit_type,
-                                                    path), shell='powershell', python_shell=True)
-    return 'ACL set up for {0} - with {1} user, {2} rules, {3} audit_type, and recurse is {4}'.format(path, audit_user, 
-                                                                                                      audit_rules,
-                                                                                                      audit_type, recurse)
+    
+    access_mask = _get_ace_translation(audit_rules)
+    flags = _get_ace_translation(inherit_type, audit_type)
+ 
+    __salt__['cmd.run']('$SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance();'
+                        '$Trustee = ([WMIClass] "Win32_Trustee").CreateInstance();'
+                        '$ace = ([WMIClass] "Win32_ace").CreateInstance();'
+                        '$SID = (new-object System.Security.Principal.NTAccount {0}).translate([security.principal.securityidentifier]);'
+                        '[byte[]] $SIDArray = ,0 * $SID.BinaryLength;'
+                        '$SID.GetBinaryForm($SIDArray,0);'
+                        '$Trustee.Name = "{0}";'
+                        '$Trustee.SID = $SIDArray;'
+                        '$ace.AccessMask = {1};'
+                        '$ace.AceFlags = {2};'
+                        '$ace.AceType = 2;'
+                        '$ace.Trustee = $Trustee;'
+                        '$SD.SACL += $ace.psobject.baseobject;'
+                        '$SD.ControlFlags=16;'
+                        '$wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path=\'{3}\'" -EnableAllPrivileges;'
+                        '$wPrivilege.setsecuritydescriptor($SD)'.format(audit_user, access_mask, flags, path),
+                         shell='powershell', python_shell=True)
+    return 'ACL set up for {0} - with {1} user, {2} access mask, {3} flags'.format(path, audit_user, access_mask, flags)
 
 
 def _remove_acl(path):
@@ -266,18 +356,19 @@ def _remove_acl(path):
     :param item:
     :return:
     '''
-    command = __salt__['cmd.run']('$acl = Get-Acl ${0}; $acl.GEtAuditRules($True, $False, '
-                                '[System.Security.Principal.SecurityIdentifier]) | Foreach-Object '
-                                '{ $acl.RemoveAuditRule($_); }); Set-Acl ${0} $acl'.format(path), shell='powershell',
-                                python_shell=True)
+    path = path.replace('\\','\\\\')
+    __salt__['cmd.run']('$SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance();'
+                        '$SD.ControlFlags=16;' 
+                        '$wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path=\'{0}\'" -EnableAllPrivileges;'
+                        '$wPrivilege.setsecuritydescriptor($SD)'.format(path), shell='powershell', python_shell=True)
 
 
 
 def _pull_events(time_frame):
     events_list = []
-    events_output = __salt__['cmd.run_stdout']('Get-EventLog -LogName Security -After ((Get-Date).AddSeconds(-{0})) '
-                                        '-InstanceId 4663 | fl'.format(time_frame), shell='powershell',
-                                        python_shell=True)
+    events_output = __salt__['cmd.run_stdout']('mode con:cols=1000 lines=1000; Get-EventLog -LogName Security '
+                                               '-After ((Get-Date).AddSeconds(-{0})) -InstanceId 4663 | fl'.format(
+                                                time_frame), shell='powershell', python_shell=True)
     events = events_output.split('\n\n')
     for event in events:
         if event:
@@ -293,6 +384,30 @@ def _pull_events(time_frame):
             #needs hostname, checksum, filepath, time stamp, action taken
             events_list.append({k: event_dict[k] for k in ('EntryType', 'Accesses', 'TimeGenerated', 'Object Name', 'Hash')})
     return events_list
+
+
+def _get_ace_translation(value, *args):
+    '''
+    This will take the ace name and return the total number accosciated to all the ace accessmasks and flags
+    Below you will find all the names accosiated to the numbers:
+
+    '''
+    ret = 0
+    ace_dict = {'ReadData': 1, 'CreateFiles': 2, 'AppendData': 4, 'ReadExtendedAttributes': 8, 
+                'WriteExtendedAttributes': 16, 'ExecuteFile': 32, 'DeleteSubdirectoriesAndFiles': 64,
+                'ReadAttributes': 128, 'WriteAttributes': 256, 'Write': 278, 'Delete': 65536, 'ReadPermissions': 131072,
+                'ChangePermissions': 262144, 'TakeOwnership': 524288, 'Read': 131209, 'ReadAndExecute': 131241, 
+                'Modify': 197055, 'ObjectInherit': 1, 'ContainerInherit': 2, 'NoPropagateInherit': 4, 'Success': 64, 
+                'Failure': 128}
+    aces = value.split(',')
+    for arg in args:
+        aces.extend(arg.split(','))
+
+    for ace in aces:
+        if ace in ace_dict:
+            ret += ace_dict[ace]
+    return ret        
+
 
 def _get_access_translation(access):
     '''
@@ -338,8 +453,10 @@ def _get_access_translation(access):
 
 
 def _get_item_hash(item):
-    if '.' in item:
-        hashy = __salt__['file.get_hash']('{}'.format(item))
+    item = item.replace('\\\\','\\')
+    test = os.path.isfile(item)
+    if os.path.isfile(item):
+        hashy = __salt__['file.get_hash']('{0}'.format(item))
         return hashy
     else:
         return 'Item is a directory'

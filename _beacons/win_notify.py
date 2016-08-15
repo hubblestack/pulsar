@@ -12,7 +12,7 @@ import datetime
 import fnmatch
 import logging
 import os
-from pprint import pprint
+import glob
 
 import salt.ext.six
 
@@ -111,7 +111,7 @@ def beacon(config):
             recurse: True
             exclude:
               - /path/to/file/or/dir/exclude1
-              - /path/to/file/or/dir/exclude2
+              - /path/to/*/file/or/dir/*/exclude2
 
     The mask list can contain the following events (the default mask is create, delete, and modify):
 
@@ -173,6 +173,9 @@ def beacon(config):
                     sys_check = 1
                 if config[path].get('exclude', False):
                     for item in config[path]['exclude']:
+                        if '*' in exclude:
+                            for wildcard_item in glob.iglob(item):
+                                _remove_acl(wildcard_item)
                         _remove_acl(item)
 
     #Read in events since last call.  Time_frame in minutes

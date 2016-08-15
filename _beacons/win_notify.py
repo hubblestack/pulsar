@@ -174,10 +174,10 @@ def beacon(config):
                 if config[path].get('exclude', False):
                     for exclude in config[path]['exclude']:
                         if '*' in exclude:
-                            for wildcard_item in glob.iglob(item):
-                                _remove_acl(wildcard_item)
+                            for wildcard_exclude in glob.iglob(exclude):
+                                _remove_acl(wildcard_exclude)
                         else:
-                            _remove_acl(item)
+                            _remove_acl(exclude)
 
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events(config['win_notify_interval'])

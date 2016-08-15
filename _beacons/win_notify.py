@@ -17,7 +17,8 @@ from pprint import pprint
 import salt.ext.six
 
 LOG = logging.getLogger(__name__)
-DEFAULT_MASK = ['Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 'TakeOwnership'] #ExecuteFile Is really chatty
+DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 
+                'TakeOwnership'] #ExecuteFile Is really chatty
 DEFAULT_TYPE = 'all'
 
 __virtualname__ = 'win_notify'
@@ -171,7 +172,8 @@ def beacon(config):
                     confirm = _add_acl(path, mask, wtype, recurse)
                     sys_check = 1
                 if config[path].get('exclude', False):
-                    _remove_acl(path)
+                    for item in config[path]['exclude']:
+                        _remove_acl(item)
 
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events(config['win_notify_interval'])

@@ -289,7 +289,7 @@ def beacon(config):
                         update = True
                     if update:
                         wm.update_watch(wd, mask=mask, rec=rec, auto_add=auto_add)
-        else:
+        elif os.path.exists(path):
             wm.add_watch(path, mask, rec=rec, auto_add=auto_add)
 
     if __salt__['config.get']('hubblestack:pulsar:maintenance', False):

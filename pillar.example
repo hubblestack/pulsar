@@ -46,4 +46,4 @@ beacons:
     return: slack_pulsar
     checksum: sha256
     stats: True
-    batch: False
+    batch: True

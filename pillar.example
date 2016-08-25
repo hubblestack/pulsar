@@ -44,7 +44,7 @@ beacons:
         - /var/lib/logrotate.status
       recurse: True
       audo_add: True
-    return: slack_pulsar
+    return: slack_pulsar_return
     checksum: sha256
     stats: True
     batch: True

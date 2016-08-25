@@ -30,6 +30,7 @@ beacons:
         - /etc/cas/timestamp
         - /etc/pki/nssdb/key4.db-journal
         - /etc/pki/nssdb/cert9.db-journal
+        - /etc/salt/gpgkeys/random_seed
       recurse: True
       auto_add: True
     /var:

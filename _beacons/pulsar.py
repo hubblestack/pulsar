@@ -153,7 +153,7 @@ def beacon(config):
               exclude:
                 - /path/to/file/or/dir/exclude1
                 - /path/to/file/or/dir/exclude2
-                - /path/to/file/or/dir/regex[\d]*$
+                - /path/to/file/or/dir/regex[\d]*$:
                     regex: True
             return:
               splunk:

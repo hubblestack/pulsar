@@ -150,7 +150,7 @@ def beacon(config):
     True, then changes will be discarded.
     '''
     log.trace('Pulsar beacon called.')
-    log.garbage('Pulsar beacon config:\n{0}'.format(config))
+    log.garbage('Pulsar beacon config from pillar:\n{0}'.format(config))
     ret = []
     notifier = _get_notifier()
     wm = notifier._watch_manager
@@ -172,6 +172,8 @@ def beacon(config):
         log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of salt:// paths')
 
     config = new_config
+
+    log.garbage('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
 
     # Read in existing events
     if notifier.check_events(1):

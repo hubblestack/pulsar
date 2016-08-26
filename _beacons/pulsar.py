@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import collections
 import fnmatch
 import os
+import re
 
 # Import salt libs
 import salt.ext.six
@@ -152,6 +153,8 @@ def beacon(config):
               exclude:
                 - /path/to/file/or/dir/exclude1
                 - /path/to/file/or/dir/exclude2
+                - /path/to/file/or/dir/regex[\d]*$:
+                    regex: True
             return:
               splunk:
                 batch: True
@@ -192,7 +195,8 @@ def beacon(config):
     auto_add:
       Automatically start watching files that are created in the watched directory
     exclude:
-      Exclude directories or files from triggering events in the watched directory
+      Exclude directories or files from triggering events in the watched directory.
+      Can use regex if regex is set to True
 
     If pillar/grains/minion config key `hubblestack:pulsar:maintenance` is set to
     True, then changes will be discarded.
@@ -225,7 +229,16 @@ def beacon(config):
             excludes = config[path].get('exclude', '')
             if excludes and isinstance(excludes, list):
                 for exclude in excludes:
-                    if '*' in exclude:
+                    if isinstance(exclude, dict):
+                        if exclude.get('regex', False):
+                            try:
+                                if re.search(exclude.keys()[0], event.pathname):
+                                    _append = False
+                            except:
+                                pass
+                        else:
+                            exclude = exclude.keys()[0]
+                    elif '*' in exclude:
                         if fnmatch.fnmatch(event.pathname, exclude):
                             _append = False
                     else:
@@ -263,6 +276,7 @@ def beacon(config):
             continue
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)
+            excludes = config[path].get('exclude', None)
             if isinstance(mask, list):
                 r_mask = 0
                 for sub in mask:
@@ -290,7 +304,11 @@ def beacon(config):
                     if update:
                         wm.update_watch(wd, mask=mask, rec=rec, auto_add=auto_add)
         elif os.path.exists(path):
-            wm.add_watch(path, mask, rec=rec, auto_add=auto_add)
+            excl = None
+            if isinstance(excludes, list):
+                excl = pyinotify.ExcludeFilter(excludes)
+
+            wm.add_watch(path, mask, rec=rec, auto_add=auto_add, exclude_filter=excl)
 
     if __salt__['config.get']('hubblestack:pulsar:maintenance', False):
         # We're in maintenance mode, throw away findings

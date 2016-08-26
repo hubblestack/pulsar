@@ -149,8 +149,8 @@ def beacon(config):
     If pillar/grains/minion config key `hubblestack:pulsar:maintenance` is set to
     True, then changes will be discarded.
     '''
-    log.trace('Pulsar beacon called.')
-    log.garbage('Pulsar beacon config from pillar:\n{0}'.format(config))
+    log.debug('Pulsar beacon called.')
+    log.trace('Pulsar beacon config from pillar:\n{0}'.format(config))
     ret = []
     notifier = _get_notifier()
     wm = notifier._watch_manager
@@ -173,7 +173,7 @@ def beacon(config):
 
     config = new_config
 
-    log.garbage('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
+    log.trace('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
 
     # Read in existing events
     if notifier.check_events(1):

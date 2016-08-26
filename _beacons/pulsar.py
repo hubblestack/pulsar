@@ -212,6 +212,10 @@ def beacon(config):
         queue = __context__['pulsar.queue']
         while queue:
             event = queue.popleft()
+            if event.maskname == 'IN_Q_OVERFLOW':
+                log.warn('Your inotify queue is overflowing.')
+                log.warn('Fix by increasing /proc/sys/fs/inotify/max_queued_events')
+                continue
 
             _append = True
             # Find the matching path in config

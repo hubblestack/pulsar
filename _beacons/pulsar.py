@@ -74,66 +74,6 @@ def _get_notifier():
     return __context__['pulsar.notifier']
 
 
-def validate(config):
-    '''
-    Validate the beacon configuration
-    '''
-
-    VALID_MASK = [
-        'access',
-        'attrib',
-        'close_nowrite',
-        'close_write',
-        'create',
-        'delete',
-        'delete_self',
-        'excl_unlink',
-        'ignored',
-        'modify',
-        'moved_from',
-        'moved_to',
-        'move_self',
-        'oneshot',
-        'onlydir',
-        'open',
-        'unmount'
-    ]
-
-    # Configuration for pulsar beacon should be a dict of dicts
-    log.debug('config {0}'.format(config))
-    if not isinstance(config, dict):
-        return False, 'Configuration for pulsar beacon must be a dictionary.'
-    else:
-        for config_item in config:
-            if not isinstance(config[config_item], dict):
-                return False, ('Configuration for pulsar beacon must '
-                               'be a dictionary of dictionaries.')
-            else:
-                if not any(j in ['mask', 'recurse', 'auto_add'] for j in config[config_item]):
-                    return False, ('Configuration for pulsar beacon must '
-                                   'contain mask, recurse or auto_add items.')
-
-            if 'auto_add' in config[config_item]:
-                if not isinstance(config[config_item]['auto_add'], bool):
-                    return False, ('Configuration for pulsar beacon '
-                                   'auto_add must be boolean.')
-
-            if 'recurse' in config[config_item]:
-                if not isinstance(config[config_item]['recurse'], bool):
-                    return False, ('Configuration for pulsar beacon '
-                                   'recurse must be boolean.')
-
-            if 'mask' in config[config_item]:
-                if not isinstance(config[config_item]['mask'], list):
-                    return False, ('Configuration for pulsar beacon '
-                                   'mask must be list.')
-                for mask in config[config_item]['mask']:
-                    if mask not in VALID_MASK:
-                        return False, ('Configuration for pulsar beacon '
-                                       'invalid mask option {0}.'.format(mask))
-    return True, 'Valid beacon configuration'
-
-
 def beacon(config):
     '''
     Watch the configured files

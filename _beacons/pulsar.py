@@ -306,7 +306,13 @@ def beacon(config):
         elif os.path.exists(path):
             excl = None
             if isinstance(excludes, list):
-                excl = pyinotify.ExcludeFilter(excludes)
+                excl = []
+                for exclude in excludes:
+                    if isinstance(exclude, dict):
+                        excl.append(exclude.keys()[0])
+                    else:
+                        excl.append(exclude)
+                excl = pyinotify.ExcludeFilter(excl)
 
             wm.add_watch(path, mask, rec=rec, auto_add=auto_add, exclude_filter=excl)
 

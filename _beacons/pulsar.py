@@ -17,6 +17,7 @@ import collections
 import fnmatch
 import os
 import re
+import yaml
 
 # Import salt libs
 import salt.ext.six
@@ -137,32 +138,39 @@ def beacon(config):
     '''
     Watch the configured files
 
-    Example Config
+    Example pillar config
 
     .. code-block:: yaml
 
         beacons:
           pulsar:
-            /path/to/file/or/dir:
-              mask:
-                - open
-                - create
-                - close_write
-              recurse: True
-              auto_add: True
-              exclude:
-                - /path/to/file/or/dir/exclude1
-                - /path/to/file/or/dir/exclude2
-                - /path/to/file/or/dir/regex[\d]*$:
-                    regex: True
-            return:
-              splunk:
-                batch: True
-              slack:
-                batch: False  # overrides the global setting
-            checksum: sha256
-            stats: True
+            paths:
+              - salt://hubblestack_pulsar_config.yaml
+
+    Example yaml config on fileserver (targeted by pillar)
+
+    .. code-block:: yaml
+
+        /path/to/file/or/dir:
+          mask:
+            - open
+            - create
+            - close_write
+          recurse: True
+          auto_add: True
+          exclude:
+            - /path/to/file/or/dir/exclude1
+            - /path/to/file/or/dir/exclude2
+            - /path/to/file/or/dir/regex[\d]*$:
+                regex: True
+        return:
+          splunk:
             batch: True
+          slack:
+            batch: False  # overrides the global setting
+        checksum: sha256
+        stats: True
+        batch: True
 
     Note that if `batch: True`, the configured returner must support receiving
     a list of events, rather than single one-off events.
@@ -201,9 +209,29 @@ def beacon(config):
     If pillar/grains/minion config key `hubblestack:pulsar:maintenance` is set to
     True, then changes will be discarded.
     '''
+    log.trace('Pulsar beacon called.')
+    log.garbage('Pulsar beacon config:\n{0}'.format(config))
     ret = []
     notifier = _get_notifier()
     wm = notifier._watch_manager
+
+    # Get config(s) from salt fileserver
+    new_config = config
+    if isinstance(config.get('paths'), list):
+        for path in config['paths']:
+            cpath = __salt__['cp.cache_file'](path)
+            if os.path.isfile(cpath):
+                with open(cpath, 'r') as f:
+                    new_config = salt.utils.dictupdate.update(new_config,
+                                                              yaml.safe_load(f),
+                                                              recursive_update=True,
+                                                              merge_lists=True)
+            else:
+                log.error('Path {0} does not exist or is not a file'.format(cpath))
+    else:
+        log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of salt:// paths')
+
+    config = new_config
 
     # Read in existing events
     if notifier.check_events(1):

@@ -212,6 +212,10 @@ def beacon(config):
         queue = __context__['pulsar.queue']
         while queue:
             event = queue.popleft()
+            if event.maskname == 'IN_Q_OVERFLOW':
+                log.warn('Your inotify queue is overflowing.')
+                log.warn('Fix by increasing /proc/sys/fs/inotify/max_queued_events')
+                continue
 
             _append = True
             # Find the matching path in config
@@ -230,11 +234,12 @@ def beacon(config):
             if excludes and isinstance(excludes, list):
                 for exclude in excludes:
                     if isinstance(exclude, dict):
-                        if exclude.get('regex', False):
+                        if exclude.values()[0].get('regex', False):
                             try:
                                 if re.search(exclude.keys()[0], event.pathname):
                                     _append = False
                             except:
+                                log.warn('Failed to compile regex: {0}'.format(exclude.keys()[0]))
                                 pass
                         else:
                             exclude = exclude.keys()[0]

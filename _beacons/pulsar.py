@@ -17,6 +17,7 @@ import collections
 import fnmatch
 import os
 import re
+import yaml
 
 # Import salt libs
 import salt.ext.six
@@ -73,96 +74,43 @@ def _get_notifier():
     return __context__['pulsar.notifier']
 
 
-def validate(config):
-    '''
-    Validate the beacon configuration
-    '''
-
-    VALID_MASK = [
-        'access',
-        'attrib',
-        'close_nowrite',
-        'close_write',
-        'create',
-        'delete',
-        'delete_self',
-        'excl_unlink',
-        'ignored',
-        'modify',
-        'moved_from',
-        'moved_to',
-        'move_self',
-        'oneshot',
-        'onlydir',
-        'open',
-        'unmount'
-    ]
-
-    # Configuration for pulsar beacon should be a dict of dicts
-    log.debug('config {0}'.format(config))
-    if not isinstance(config, dict):
-        return False, 'Configuration for pulsar beacon must be a dictionary.'
-    else:
-        for config_item in config:
-            if not isinstance(config[config_item], dict):
-                return False, ('Configuration for pulsar beacon must '
-                               'be a dictionary of dictionaries.')
-            else:
-                if not any(j in ['mask', 'recurse', 'auto_add'] for j in config[config_item]):
-                    return False, ('Configuration for pulsar beacon must '
-                                   'contain mask, recurse or auto_add items.')
-
-            if 'auto_add' in config[config_item]:
-                if not isinstance(config[config_item]['auto_add'], bool):
-                    return False, ('Configuration for pulsar beacon '
-                                   'auto_add must be boolean.')
-
-            if 'recurse' in config[config_item]:
-                if not isinstance(config[config_item]['recurse'], bool):
-                    return False, ('Configuration for pulsar beacon '
-                                   'recurse must be boolean.')
-
-            if 'mask' in config[config_item]:
-                if not isinstance(config[config_item]['mask'], list):
-                    return False, ('Configuration for pulsar beacon '
-                                   'mask must be list.')
-                for mask in config[config_item]['mask']:
-                    if mask not in VALID_MASK:
-                        return False, ('Configuration for pulsar beacon '
-                                       'invalid mask option {0}.'.format(mask))
-    return True, 'Valid beacon configuration'
-
-
 def beacon(config):
     '''
     Watch the configured files
 
-    Example Config
+    Example pillar config
 
     .. code-block:: yaml
 
         beacons:
           pulsar:
-            /path/to/file/or/dir:
-              mask:
-                - open
-                - create
-                - close_write
-              recurse: True
-              auto_add: True
-              exclude:
-                - /path/to/file/or/dir/exclude1
-                - /path/to/file/or/dir/exclude2
-                - /path/to/file/or/dir/regex[\d]*$:
-                    regex: True
-            return:
-              splunk:
-                batch: True
-              slack:
-                batch: False  # overrides the global setting
-            checksum: sha256
-            stats: True
+            paths:
+              - salt://hubblestack_pulsar_config.yaml
+
+    Example yaml config on fileserver (targeted by pillar)
+
+    .. code-block:: yaml
+
+        /path/to/file/or/dir:
+          mask:
+            - open
+            - create
+            - close_write
+          recurse: True
+          auto_add: True
+          exclude:
+            - /path/to/file/or/dir/exclude1
+            - /path/to/file/or/dir/exclude2
+            - /path/to/file/or/dir/regex[\d]*$:
+                regex: True
+        return:
+          splunk:
             batch: True
+          slack:
+            batch: False  # overrides the global setting
+        checksum: sha256
+        stats: True
+        batch: True
 
     Note that if `batch: True`, the configured returner must support receiving
     a list of events, rather than single one-off events.
@@ -201,9 +149,31 @@ def beacon(config):
     If pillar/grains/minion config key `hubblestack:pulsar:maintenance` is set to
     True, then changes will be discarded.
     '''
+    log.debug('Pulsar beacon called.')
+    log.trace('Pulsar beacon config from pillar:\n{0}'.format(config))
     ret = []
     notifier = _get_notifier()
     wm = notifier._watch_manager
+
+    # Get config(s) from salt fileserver
+    new_config = config
+    if isinstance(config.get('paths'), list):
+        for path in config['paths']:
+            cpath = __salt__['cp.cache_file'](path)
+            if os.path.isfile(cpath):
+                with open(cpath, 'r') as f:
+                    new_config = salt.utils.dictupdate.update(new_config,
+                                                              yaml.safe_load(f),
+                                                              recursive_update=True,
+                                                              merge_lists=True)
+            else:
+                log.error('Path {0} does not exist or is not a file'.format(cpath))
+    else:
+        log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of salt:// paths')
+
+    config = new_config
+
+    log.trace('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
 
     # Read in existing events
     if notifier.check_events(1):

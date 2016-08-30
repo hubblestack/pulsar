@@ -1,5 +1,0 @@
-base:
-  '*':
-    - slack
-    - beacons
-    - hubblestack

@@ -1,0 +1,48 @@
+/lib: { recurse: True, auto_add: True }
+/bin: { recurse: True, auto_add: True }
+/sbin: { recurse: True, auto_add: True }
+/boot: { recurse: True, auto_add: True }
+/lib64: { recurse: True, auto_add: True }
+/usr/lib: { recurse: True, auto_add: True }
+/usr/bin: { recurse: True, auto_add: True }
+/usr/sbin: { recurse: True, auto_add: True }
+/usr/lib64: { recurse: True, auto_add: True }
+/usr/local/etc: { recurse: True, auto_add: True }
+/usr/local/bin: { recurse: True, auto_add: True }
+/usr/local/lib: { recurse: True, auto_add: True }
+/usr/local/sbin: { recurse: True, auto_add: True }
+/etc:
+  exclude:
+    - /etc/passwd.lock
+    - /etc/shadow.lock
+    - /etc/gshadow.lock
+    - /etc/group.lock
+    - /etc/passwd+
+    - /etc/passwd-
+    - /etc/shadow+
+    - /etc/shadow-
+    - /etc/group+
+    - /etc/group-
+    - /etc/gshadow+
+    - /etc/gshadow-
+    - /etc/cas/timestamp
+    - /etc/pki/nssdb/key4.db-journal
+    - /etc/pki/nssdb/cert9.db-journal
+    - /etc/salt/gpgkeys/random_seed
+  recurse: True
+  auto_add: True
+/var:
+  exclude:
+    - /var/log
+    - /var/spool
+    - /var/cache
+    - /var/lock
+    - /var/lib/ntp
+    - /var/lib/mlocate
+    - /var/lib/logrotate.status
+  recurse: True
+  audo_add: True
+return: slack_pulsar
+checksum: sha256
+stats: True
+batch: True

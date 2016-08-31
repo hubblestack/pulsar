@@ -1,3 +1,8 @@
+
+.. note:: After syncing a new version of a beacon to salt, the salt-minion
+    must be restarted to pick up the change. See
+    https://github.com/saltstack/salt/issues/35960 for more info
+
 .. _pulsar_introduction:
 
 Introduction

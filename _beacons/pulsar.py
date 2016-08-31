@@ -150,7 +150,8 @@ def beacon(config):
     True, then changes will be discarded.
     '''
     log.debug('Pulsar beacon called.')
-    log.trace('Pulsar beacon config from pillar:\n{0}'.format(config))
+    if config.get('verbose'):
+        log.debug('Pulsar beacon config from pillar:\n{0}'.format(config))
     ret = []
     notifier = _get_notifier()
     wm = notifier._watch_manager
@@ -171,9 +172,11 @@ def beacon(config):
     else:
         log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of salt:// paths')
 
+    new_config.update(config)
     config = new_config
 
-    log.trace('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
+    if config.get('verbose'):
+        log.debug('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
 
     # Read in existing events
     if notifier.check_events(1):
@@ -247,7 +250,8 @@ def beacon(config):
     # Update existing watches and add new ones
     # TODO: make the config handle more options
     for path in config:
-        if path == 'return' or path == 'checksum' or path == 'stats' or path == 'batch':
+        if path == 'return' or path == 'checksum' or path == 'stats' \
+                or path == 'batch' or path == 'verbose' or path == 'paths':
             continue
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)

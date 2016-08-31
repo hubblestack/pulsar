@@ -38,6 +38,8 @@ except ImportError:
     DEFAULT_MASK = None
 
 __virtualname__ = 'pulsar'
+CONFIG = None
+CONFIG_STALENESS = 0
 
 import logging
 log = logging.getLogger(__name__)
@@ -86,6 +88,8 @@ def beacon(config):
           pulsar:
             paths:
               - salt://hubblestack_pulsar_config.yaml
+            refresh_frequency: 60
+            verbose: False
 
     Example yaml config on fileserver (targeted by pillar)
 
@@ -149,31 +153,45 @@ def beacon(config):
     If pillar/grains/minion config key `hubblestack:pulsar:maintenance` is set to
     True, then changes will be discarded.
     '''
-    log.debug('Pulsar beacon called.')
     if config.get('verbose'):
+        log.debug('Pulsar beacon called.')
         log.debug('Pulsar beacon config from pillar:\n{0}'.format(config))
     ret = []
     notifier = _get_notifier()
     wm = notifier._watch_manager
 
-    # Get config(s) from salt fileserver
-    new_config = config
-    if isinstance(config.get('paths'), list):
-        for path in config['paths']:
-            cpath = __salt__['cp.cache_file'](path)
-            if os.path.isfile(cpath):
-                with open(cpath, 'r') as f:
-                    new_config = salt.utils.dictupdate.update(new_config,
-                                                              yaml.safe_load(f),
-                                                              recursive_update=True,
-                                                              merge_lists=True)
-            else:
-                log.error('Path {0} does not exist or is not a file'.format(cpath))
+    # Get config(s) from salt fileserver if we don't have them already
+    if CONFIG and CONFIG_STALENESS < config.get('refresh_frequency', 60):
+        global CONFIG
+        global CONFIG_STALENESS
+        CONFIG_STALENESS += 1
+        CONFIG.update(config)
+        CONFIG['verbose'] = config.get('verbose')
+        config = CONFIG
     else:
-        log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of salt:// paths')
+        if config.get('verbose'):
+            log.debug('No cached config found for pulsar, fetching new.')
+        new_config = config
+        if isinstance(config.get('paths'), list):
+            for path in config['paths']:
+                cpath = __salt__['cp.cache_file'](path)
+                if os.path.isfile(cpath):
+                    with open(cpath, 'r') as f:
+                        new_config = salt.utils.dictupdate.update(new_config,
+                                                                  yaml.safe_load(f),
+                                                                  recursive_update=True,
+                                                                  merge_lists=True)
+                else:
+                    log.error('Path {0} does not exist or is not a file'.format(cpath))
+        else:
+            log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of salt:// paths')
 
-    new_config.update(config)
-    config = new_config
+        new_config.update(config)
+        config = new_config
+        global CONFIG
+        global CONFIG_STALENESS
+        CONFIG_STALENESS = 0
+        CONFIG = config
 
     if config.get('verbose'):
         log.debug('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
@@ -251,7 +269,8 @@ def beacon(config):
     # TODO: make the config handle more options
     for path in config:
         if path == 'return' or path == 'checksum' or path == 'stats' \
-                or path == 'batch' or path == 'verbose' or path == 'paths':
+                or path == 'batch' or path == 'verbose' or path == 'paths' \
+                or path == 'refresh_frequency':
             continue
         if isinstance(config[path], dict):
             mask = config[path].get('mask', DEFAULT_MASK)

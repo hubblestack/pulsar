@@ -14,4 +14,4 @@ beacons:
 
     win_notify_interval: 30 # MUST be the same as interval
     interval: 30 # MUST be the same as win_notify_interval
-      
+    disable_during_state_run: True

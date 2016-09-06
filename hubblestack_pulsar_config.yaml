@@ -42,7 +42,7 @@
     - /var/lib/logrotate.status
   recurse: True
   auto_add: True
-return: slack_pulsar
+return: splunk_pulsar_return
 checksum: sha256
 stats: True
 batch: True

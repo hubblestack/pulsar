@@ -153,6 +153,8 @@ def beacon(config):
     If pillar/grains/minion config key `hubblestack:pulsar:maintenance` is set to
     True, then changes will be discarded.
     '''
+    global CONFIG_STALENESS
+    global CONFIG
     if config.get('verbose'):
         log.debug('Pulsar beacon called.')
         log.debug('Pulsar beacon config from pillar:\n{0}'.format(config))
@@ -162,8 +164,6 @@ def beacon(config):
 
     # Get config(s) from salt fileserver if we don't have them already
     if CONFIG and CONFIG_STALENESS < config.get('refresh_frequency', 60):
-        global CONFIG
-        global CONFIG_STALENESS
         CONFIG_STALENESS += 1
         CONFIG.update(config)
         CONFIG['verbose'] = config.get('verbose')
@@ -188,8 +188,6 @@ def beacon(config):
 
         new_config.update(config)
         config = new_config
-        global CONFIG
-        global CONFIG_STALENESS
         CONFIG_STALENESS = 0
         CONFIG = config
 

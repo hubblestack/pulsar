@@ -317,6 +317,8 @@ def beacon(config):
         ret = []
 
     if ret and 'return' in config:
+        __opts__['grains'] = __grains__
+        __opts__['pillar'] = __pillar__
         __returners__ = salt.loader.returners(__opts__, __salt__)
         return_config = config['return']
         if isinstance(return_config, salt.ext.six.string_types):

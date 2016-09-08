@@ -175,9 +175,16 @@ Pulsar to be flexible.
 
     # pillar.example
     beacons:
-       pulsar:
-         paths:
-           - salt://hubblestack_pulsar_config.yaml
+      pulsar:
+        paths:
+          - /var/cache/salt/minion/files/base/hubblestack_pulsar_config.yaml
+    schedule:
+      cache_nebula:
+        function: cp.cache_file
+        seconds: 86400
+        args:
+          - salt://hubblestack_pulsar_config.yaml
+        return_job: False
 
 
     # hubblestack_pulsar_config.yaml

@@ -87,7 +87,7 @@ def beacon(config):
         beacons:
           pulsar:
             paths:
-              - salt://hubblestack_pulsar_config.yaml
+              - /var/cache/salt/minion/files/base/hubblestack_pulsar_config.yaml
             refresh_frequency: 60
             verbose: False
 
@@ -174,17 +174,23 @@ def beacon(config):
         new_config = config
         if isinstance(config.get('paths'), list):
             for path in config['paths']:
-                cpath = __salt__['cp.cache_file'](path)
-                if os.path.isfile(cpath):
-                    with open(cpath, 'r') as f:
+                if 'salt://' in path:
+                    log.error('Path {0} is not an absolute path. Please use a '
+                              'scheduled cp.cache_file job to deliver the '
+                              'config to the minion, then provide the '
+                              'absolute path to the cached file on the minion '
+                              'in the beacon config.'.format(path))
+                    continue
+                if os.path.isfile(path):
+                    with open(path, 'r') as f:
                         new_config = _dict_update(new_config,
                                                   yaml.safe_load(f),
                                                   recursive_update=True,
                                                   merge_lists=True)
                 else:
-                    log.error('Path {0} does not exist or is not a file'.format(cpath))
+                    log.error('Path {0} does not exist or is not a file'.format(path))
         else:
-            log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of salt:// paths')
+            log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of paths')
 
         new_config.update(config)
         config = new_config

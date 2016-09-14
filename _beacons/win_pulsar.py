@@ -16,79 +16,20 @@ import glob
 
 import salt.ext.six
 
-LOG = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions',
                 'TakeOwnership'] #ExecuteFile Is really chatty
 DEFAULT_TYPE = 'all'
 
-__virtualname__ = 'win_notify'
+__virtualname__ = 'pulsar'
+CONFIG = None
+CONFIG_STALENESS = 0
+
 
 def __virtual__():
     if not salt.utils.is_windows():
         return False, 'This module only works on windows'
     return __virtualname__
-
-def validate(config):
-    '''
-    Validate the beacon configuration.
-    Once that is done it will return a successful validation
-    :param config:
-    :return:
-    '''
-    VALID_MASK = [
-        'ExecuteFile',
-        'ReadData',
-        'ReadAttributes',
-        'ReadExtendedAttributes',
-        'CreateFiles',
-        'AppendData',
-        'WriteAttributes',
-        'WriteExtendedAttributes',
-        'DeleteSubdirectoriesAndFiles',
-        'Delete',
-        'ReadPermissions',
-        'ChangePermissions',
-        'TakeOwnership',
-        'Write',
-        'Read',
-        'ReadAndExecute',
-        'Modify'
-    ]
-
-    VALID_TYPE = [
-        'all',
-        'success',
-        'fail'
-    ]
-    # Configuration for win_notify beacon should be a dict of dicts
-    if not isinstance(config, dict):
-        return False, 'Configuration for win_notify beacon must be a dictionary.'
-    else:
-        for config_item in config:
-            if not isinstance(config[config_item], dict):
-                return False, 'Configuration for win_notify beacon must be a dictionary of dictionaries.'
-            else:
-                if not any(j in ['mask', 'recurse'] for j in config[config_item]):
-                    return False, 'Configuration for win_notify beacon must contain mask, recurse or auto_add items.'
-
-            if 'recurse' in config[config_item]:
-                if not isinstance(config[config_item]['recurse'], bool):
-                    return False, 'Configuration for win_notify beacon recurse must be boolean.'
-
-            if 'mask' in config[config_item]:
-                if not isinstance(config[config_item]['mask'], list):
-                    return False, 'Configuration for win_notify beacon mask must be list.'
-                for mask in config[config_item]['mask']:
-                    if mask not in VALID_MASK:
-                        return False, 'Configuration for win_notify beacon invalid mask option {0}.'.format(mask)
-
-            if 'wtype' in config[config_item]:
-                if not isinstance(config[config_item]['wtype'], str):
-                    return False, 'Configuration for win_notify beacon type must be str.'
-                for wtype in config[config_item]['wtype']:
-                    if wtype not in VALID_TYPE:
-                        return False, 'Configuration for win_notify beacon invalid type option {0}'.format(wtype)
-        return True, 'Valid beacon configuration'
 
 
 def beacon(config):

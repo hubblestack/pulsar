@@ -47,6 +47,8 @@ log = logging.getLogger(__name__)
 
 
 def __virtual__():
+    if salt.utils.is_windows():
+        return False, 'This module only works on Linux'
     if HAS_PYINOTIFY:
         return __virtualname__
     return False

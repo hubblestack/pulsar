@@ -174,7 +174,7 @@ def beacon(config):
         config = CONFIG
     else:
         if config.get('verbose'):
-            log.debug('No cached config found for pulsar, fetching new.')
+            log.debug('No cached config found for pulsar, retrieving fresh from disk.')
         new_config = config
         if isinstance(config.get('paths'), list):
             for path in config['paths']:

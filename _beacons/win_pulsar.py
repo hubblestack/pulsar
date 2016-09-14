@@ -88,8 +88,51 @@ def beacon(config):
 
     :return:
     '''
+    global CONFIG_STALENESS
+    global CONFIG
+    if config.get('verbose'):
+        log.debug('Pulsar beacon called.')
+        log.debug('Pulsar beacon config from pillar:\n{0}'.format(config))
     ret = []
     sys_check = 0
+
+    # Get config(s) from filesystem if we don't have them already
+    if CONFIG and CONFIG_STALENESS < config.get('refresh_frequency', 60):
+        CONFIG_STALENESS += 1
+        CONFIG.update(config)
+        CONFIG['verbose'] = config.get('verbose')
+        config = CONFIG
+    else:
+        if config.get('verbose'):
+            log.debug('No cached config found for pulsar, retrieving fresh from disk.')
+        new_config = config
+        if isinstance(config.get('paths'), list):
+            for path in config['paths']:
+                if 'salt://' in path:
+                    log.error('Path {0} is not an absolute path. Please use a '
+                              'scheduled cp.cache_file job to deliver the '
+                              'config to the minion, then provide the '
+                              'absolute path to the cached file on the minion '
+                              'in the beacon config.'.format(path))
+                    continue
+                if os.path.isfile(path):
+                    with open(path, 'r') as f:
+                        new_config = _dict_update(new_config,
+                                                  yaml.safe_load(f),
+                                                  recursive_update=True,
+                                                  merge_lists=True)
+                else:
+                    log.error('Path {0} does not exist or is not a file'.format(path))
+        else:
+            log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of paths')
+
+        new_config.update(config)
+        config = new_config
+        CONFIG_STALENESS = 0
+        CONFIG = config
+
+    if config.get('verbose'):
+        log.debug('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
 
     # Validate Global Auditing with Auditpol
     global_check = __salt__['cmd.run']('auditpol /get /category:"Object Access" /r | find "File System"',

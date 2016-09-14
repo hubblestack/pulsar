@@ -17,7 +17,7 @@ import glob
 import salt.ext.six
 
 LOG = logging.getLogger(__name__)
-DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 
+DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions',
                 'TakeOwnership'] #ExecuteFile Is really chatty
 DEFAULT_TYPE = 'all'
 
@@ -245,16 +245,16 @@ def _add_acl(path, mask, wtype, recurse):
 
      $SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance()
      $Trustee = ([WMIClass] "Win32_Trustee").CreateInstance()
- 
+
      # One for Success and other for Failure events
      $ace1 = ([WMIClass] "Win32_ace").CreateInstance()
      $ace2 = ([WMIClass] "Win32_ace").CreateInstance()
- 
+
      $SID = (new-object security.principal.ntaccount $user).translate([security.principal.securityidentifier])
- 
+
      [byte[]] $SIDArray = ,0 * $SID.BinaryLength
      $SID.GetBinaryForm($SIDArray,0)
- 
+
      $Trustee.Name = $user
      $Trustee.SID = $SIDArray
 
@@ -263,21 +263,21 @@ def _add_acl(path, mask, wtype, recurse):
      $ace2.AceFlags = 131 #  FAILED_ACCESS_ACE_FLAG (128), CONTAINER_INHERIT_ACE (2), OBJECT_INHERIT_ACE (1)
      $ace2.AceType =2 # Audit
      $ace2.Trustee = $Trustee
-  
+
      $SD.SACL += $ace1.psobject.baseobject
      $SD.SACL += $ace2.psobject.baseobject
-     $SD.ControlFlags=16  
+     $SD.ControlFlags=16
      $wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path='$path'" -EnableAllPrivileges
      $wPrivilege.setsecuritydescriptor($SD)
 
     The ACE accessmask map key is below:
-   
+
      1.  ReadData                        - 1
      2.  CreateFiles                     - 2
      3.  AppendData                      - 4
      4.  ReadExtendedAttributes          - 8
      5.  WriteExtendedAttributes         - 16
-     6.  ExecuteFile                     - 32 
+     6.  ExecuteFile                     - 32
      7.  DeleteSubdirectoriesAndFiles    - 64
      8.  ReadAttributes                  - 128
      9.  WriteAttributes                 - 256
@@ -289,14 +289,14 @@ def _add_acl(path, mask, wtype, recurse):
      15. Read                            - 131209 (Combo of ReadData, ReadAttributes, ReadExtendedAttributes, ReadPermissions)
      16. ReadAndExecute                  - 131241 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes,
                                                    ReadPermissions)
-     17. Modify                          - 197055 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes, 
-                                                   CreateFiles, AppendData, WriteAttributes, WriteExtendedAttributes, 
+     17. Modify                          - 197055 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes,
+                                                   CreateFiles, AppendData, WriteAttributes, WriteExtendedAttributes,
                                                    Delete, ReadPermissions)
     The Ace flags map key is below:
-     1. ObjectInherit                    - 1 
+     1. ObjectInherit                    - 1
      2. ContainerInherit                 - 2
      3. NoPorpagateInherit               - 4
-     4. SuccessfulAccess                 - 64  (Used with System-audit to generate audit messages for successful access 
+     4. SuccessfulAccess                 - 64  (Used with System-audit to generate audit messages for successful access
                                                 attempts)
      5. FailedAccess                     - 128 (Used with System-audit to generate audit messages for Failed access attempts)
 
@@ -308,7 +308,7 @@ def _add_acl(path, mask, wtype, recurse):
     If you want multiple values you just add them together to get a desired outcome:
      ACCESSMASK of file_add_file, file_add_subdirectory, delete, file_delete_child, write_dac, write_owner:
      852038 =           2       +           4          + 65536 +        64        +   262144i
-    
+
      FLAGS of ObjectInherit, ContainerInherit, SuccessfullAccess, FailedAccess:
      195 =         1       +        2        +        64        +      128
 
@@ -324,10 +324,10 @@ def _add_acl(path, mask, wtype, recurse):
         audit_type = 'Success,Failure'
     else:
         audit_type = wtype
-    
+
     access_mask = _get_ace_translation(audit_rules)
     flags = _get_ace_translation(inherit_type, audit_type)
- 
+
     __salt__['cmd.run']('$SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance();'
                         '$Trustee = ([WMIClass] "Win32_Trustee").CreateInstance();'
                         '$ace = ([WMIClass] "Win32_ace").CreateInstance();'
@@ -358,7 +358,7 @@ def _remove_acl(path):
     '''
     path = path.replace('\\','\\\\')
     __salt__['cmd.run']('$SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance();'
-                        '$SD.ControlFlags=16;' 
+                        '$SD.ControlFlags=16;'
                         '$wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path=\'{0}\'" -EnableAllPrivileges;'
                         '$wPrivilege.setsecuritydescriptor($SD)'.format(path), shell='powershell', python_shell=True)
 
@@ -393,11 +393,11 @@ def _get_ace_translation(value, *args):
 
     '''
     ret = 0
-    ace_dict = {'ReadData': 1, 'CreateFiles': 2, 'AppendData': 4, 'ReadExtendedAttributes': 8, 
+    ace_dict = {'ReadData': 1, 'CreateFiles': 2, 'AppendData': 4, 'ReadExtendedAttributes': 8,
                 'WriteExtendedAttributes': 16, 'ExecuteFile': 32, 'DeleteSubdirectoriesAndFiles': 64,
                 'ReadAttributes': 128, 'WriteAttributes': 256, 'Write': 278, 'Delete': 65536, 'ReadPermissions': 131072,
-                'ChangePermissions': 262144, 'TakeOwnership': 524288, 'Read': 131209, 'ReadAndExecute': 131241, 
-                'Modify': 197055, 'ObjectInherit': 1, 'ContainerInherit': 2, 'NoPropagateInherit': 4, 'Success': 64, 
+                'ChangePermissions': 262144, 'TakeOwnership': 524288, 'Read': 131209, 'ReadAndExecute': 131241,
+                'Modify': 197055, 'ObjectInherit': 1, 'ContainerInherit': 2, 'NoPropagateInherit': 4, 'Success': 64,
                 'Failure': 128}
     aces = value.split(',')
     for arg in args:
@@ -406,7 +406,7 @@ def _get_ace_translation(value, *args):
     for ace in aces:
         if ace in ace_dict:
             ret += ace_dict[ace]
-    return ret        
+    return ret
 
 
 def _get_access_translation(access):

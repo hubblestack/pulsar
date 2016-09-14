@@ -136,8 +136,9 @@ the minions.
     cd hubblestack-pulsar.git
     mkdir -p /srv/salt/_beacons/
     cp _beacons/pulsar.py /srv/salt/_beacons/
-    cp hubblestack_pulsar_config.yaml /srv/salt/
-    cp pillar.example /srv/pillar/hubblestack_pulsar.sls
+    mkdir /srv/salt/hubblestack_pulsar
+    cp hubblestack_pulsar/hubblestack_pulsar_config.yaml /srv/salt/hubblestack_pulsar
+    cp hubblestack_pulsar/pillar.example /srv/pillar/hubblestack_pulsar.sls
     salt \* saltutil.sync_beacons
 
 Target the copied ``hubblestack_pulsar.sls`` to selected minions.
@@ -177,13 +178,13 @@ Pulsar to be flexible.
     beacons:
       pulsar:
         paths:
-          - /var/cache/salt/minion/files/base/hubblestack_pulsar_config.yaml
+          - /var/cache/salt/minion/files/base/hubblestack_pulsar/hubblestack_pulsar_config.yaml
     schedule:
       cache_nebula:
         function: cp.cache_file
         seconds: 86400
         args:
-          - salt://hubblestack_pulsar_config.yaml
+          - salt://hubblestack_pulsar/hubblestack_pulsar_config.yaml
         return_job: False
 
 

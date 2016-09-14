@@ -87,7 +87,7 @@ def beacon(config):
         beacons:
           pulsar:
             paths:
-              - /var/cache/salt/minion/files/base/hubblestack_pulsar_config.yaml
+              - /var/cache/salt/minion/files/base/hubblestack_pulsar/hubblestack_pulsar_config.yaml
             refresh_frequency: 60
             verbose: False
 

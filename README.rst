@@ -172,23 +172,26 @@ is meant to act as a template. It works in tandem with the
 different needs and requirements, and we understand that, so we've designed
 Pulsar to be flexible.
 
+** pillar.example **
+
 .. code-block:: yaml
 
-    # pillar.example
     beacons:
       pulsar:
         paths:
           - /var/cache/salt/minion/files/base/hubblestack_pulsar/hubblestack_pulsar_config.yaml
     schedule:
-      cache_nebula:
+      cache_pulsar:
         function: cp.cache_file
         seconds: 86400
         args:
           - salt://hubblestack_pulsar/hubblestack_pulsar_config.yaml
         return_job: False
 
+** hubblestack_pulsar_config **
 
-    # hubblestack_pulsar_config.yaml
+.. code-block:: yaml
+
     /etc: { recurse: True, auto_add: True }
     /bin: { recurse: True, auto_add: True }
     /sbin: { recurse: True, auto_add: True }

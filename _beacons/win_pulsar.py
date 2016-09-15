@@ -13,8 +13,10 @@ import fnmatch
 import logging
 import os
 import glob
+import yaml
 
 import salt.ext.six
+import salt.loader
 
 log = logging.getLogger(__name__)
 DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions',
@@ -166,11 +168,43 @@ def beacon(config):
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events(config['win_notify_interval'])
     if sys_check == 1:
-        problem = {}
-        problem['error'] = 'The ACLs were not setup correctly, or global auditing is not enabled.  This could have' \
-                   'been remedied, bug GP might need to be changed'
-        ret.append(problem)
-    return ret
+        log.error('The ACLs were not setup correctly, or global auditing is not enabled.  This could have '
+                  'been remedied, but GP might need to be changed')
+
+    if __salt__['config.get']('hubblestack:pulsar:maintenance', False):
+        # We're in maintenance mode, throw away findings
+        ret = []
+
+    if ret and 'return' in config:
+        __opts__['grains'] = __grains__
+        __opts__['pillar'] = __pillar__
+        __returners__ = salt.loader.returners(__opts__, __salt__)
+        return_config = config['return']
+        if isinstance(return_config, salt.ext.six.string_types):
+            tmp = {}
+            for conf in return_config.split(','):
+                tmp[conf] = None
+            return_config = tmp
+        for returner_mod in return_config:
+            returner = '{0}.returner'.format(returner_mod)
+            if returner not in __returners__:
+                log.error('Could not find {0} returner for pulsar beacon'.format(config['return']))
+                return ret
+            batch_config = config.get('batch')
+            if isinstance(return_config[returner_mod], dict) and return_config[returner_mod].get('batch'):
+                batch_config = True
+            if batch_config:
+                transformed = []
+                for item in ret:
+                    transformed.append({'return': item})
+                __returners__[returner](transformed)
+            else:
+                for item in ret:
+                    __returners__[returner]({'return': item})
+        return []
+    else:
+        # Return event data
+        return ret
 
 
 def _check_acl(path, mask, wtype, recurse):

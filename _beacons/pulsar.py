@@ -205,6 +205,8 @@ def beacon(config):
         notifier.read_events()
         notifier.process_events()
         queue = __context__['pulsar.queue']
+        if config.get('verbose'):
+            log.debug('Pulsar found {0} inotify events.'.format(len(queue)))
         while queue:
             event = queue.popleft()
             if event.maskname == 'IN_Q_OVERFLOW':

@@ -11,6 +11,13 @@
 /usr/local/bin: { recurse: True, auto_add: True }
 /usr/local/lib: { recurse: True, auto_add: True }
 /usr/local/sbin: { recurse: True, auto_add: True }
+/opt:
+  exclude:
+    - /opt/splunk/var/
+    - /opt/cloudpassage/log/
+    - /opt/splunkforwarder/var/
+  recurse: True
+  auto_add: True
 /etc:
   exclude:
     - /etc/passwd.lock
@@ -37,17 +44,6 @@
         regex: True
     - \/etc\/gshadow\.\d*$:
         regex: True
-  recurse: True
-  auto_add: True
-/var:
-  exclude:
-    - /var/log
-    - /var/spool
-    - /var/cache
-    - /var/lock
-    - /var/lib/ntp
-    - /var/lib/mlocate
-    - /var/lib/logrotate.status
   recurse: True
   auto_add: True
 return: splunk_pulsar_return

@@ -95,8 +95,8 @@ repo for updates and bugfixes!)
 
 .. code-block:: shell
 
-    wget https://spm.hubblestack.io/2016.7.1/hubblestack_pulsar-2016.7.1-1.spm
-    spm local install hubblestack_pulsar-2016.7.1-1.spm
+    wget http://spm.hubblestack.io/pulsar/hubblestack_pulsar-2016.9.4-1.spm
+    spm local install hubblestack_pulsar-2016.9.4-1.spm
 
 You should now be able to sync the new modules to your minion(s) using the
 ``sync_modules`` Salt utility:

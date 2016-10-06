@@ -88,7 +88,7 @@ def beacon(config):
           pulsar:
             paths:
               - /var/cache/salt/minion/files/base/hubblestack_pulsar/hubblestack_pulsar_config.yaml
-            refresh_frequency: 60
+            refresh_interval: 300
             verbose: False
 
     Example yaml config on fileserver (targeted by pillar)
@@ -164,7 +164,7 @@ def beacon(config):
     update_watches = False
 
     # Get config(s) from salt fileserver if we don't have them already
-    if CONFIG and CONFIG_STALENESS < config.get('refresh_frequency', 60):
+    if CONFIG and CONFIG_STALENESS < config.get('refresh_interval', 300):
         CONFIG_STALENESS += 1
         CONFIG.update(config)
         CONFIG['verbose'] = config.get('verbose')
@@ -279,7 +279,7 @@ def beacon(config):
         for path in config:
             if path == 'return' or path == 'checksum' or path == 'stats' \
                     or path == 'batch' or path == 'verbose' or path == 'paths' \
-                    or path == 'refresh_frequency':
+                    or path == 'refresh_interval':
                 continue
             if isinstance(config[path], dict):
                 mask = config[path].get('mask', DEFAULT_MASK)

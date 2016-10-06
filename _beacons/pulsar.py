@@ -15,6 +15,7 @@ Watch files and translate the changes into salt events
 from __future__ import absolute_import
 import collections
 import fnmatch
+import multiprocessing
 import os
 import re
 import yaml
@@ -346,10 +347,20 @@ def beacon(config):
                 transformed = []
                 for item in ret:
                     transformed.append({'return': item})
-                __returners__[returner](transformed)
+                if config.get('multiprocessing_return', True):
+                    p = multiprocessing.Process(target=__returners__[returner], args=(transformed,))
+                    p.daemon = True
+                    p.start()
+                else:
+                    __returners__[returner](transformed)
             else:
                 for item in ret:
-                    __returners__[returner]({'return': item})
+                    if config.get('multiprocessing_return', True):
+                        p = multiprocessing.Process(target=__returners__[returner], args=({'return': item},))
+                        p.daemon = True
+                        p.start()
+                    else:
+                        __returners__[returner]({'return': item})
         return []
     else:
         # Return event data

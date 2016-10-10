@@ -199,7 +199,7 @@ def beacon(config):
                 for item in ret:
                     transformed.append({'return': item})
                 if config.get('multiprocessing_return', True):
-                    p = multiprocessing.Process(target=__returners__[returner], args=(transformed,))
+                    p = multiprocessing.Process(target=_return, args=((transformed,), returner))
                     p.daemon = True
                     p.start()
                 else:
@@ -207,7 +207,7 @@ def beacon(config):
             else:
                 for item in ret:
                     if config.get('multiprocessing_return', True):
-                        p = multiprocessing.Process(target=__returners__[returner], args=({'return': item},))
+                        p = multiprocessing.Process(target=_return, args=(({'return': item},), returner))
                         p.daemon = True
                         p.start()
                     else:
@@ -216,6 +216,11 @@ def beacon(config):
     else:
         # Return event data
         return ret
+
+
+def _return(args, returner):
+    __returners__ = salt.loader.returners(__opts__, __salt__)
+    __returners__[returner](*args)
 
 
 def _check_acl(path, mask, wtype, recurse):

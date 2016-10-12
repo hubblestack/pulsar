@@ -11,84 +11,28 @@ import collections
 import datetime
 import fnmatch
 import logging
+import multiprocessing
 import os
 import glob
+import yaml
 
 import salt.ext.six
+import salt.loader
 
-LOG = logging.getLogger(__name__)
-DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions', 
+log = logging.getLogger(__name__)
+DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles', 'ChangePermissions',
                 'TakeOwnership'] #ExecuteFile Is really chatty
 DEFAULT_TYPE = 'all'
 
-__virtualname__ = 'win_notify'
+__virtualname__ = 'pulsar'
+CONFIG = None
+CONFIG_STALENESS = 0
+
 
 def __virtual__():
     if not salt.utils.is_windows():
         return False, 'This module only works on windows'
     return __virtualname__
-
-def validate(config):
-    '''
-    Validate the beacon configuration.
-    Once that is done it will return a successful validation
-    :param config:
-    :return:
-    '''
-    VALID_MASK = [
-        'ExecuteFile',
-        'ReadData',
-        'ReadAttributes',
-        'ReadExtendedAttributes',
-        'CreateFiles',
-        'AppendData',
-        'WriteAttributes',
-        'WriteExtendedAttributes',
-        'DeleteSubdirectoriesAndFiles',
-        'Delete',
-        'ReadPermissions',
-        'ChangePermissions',
-        'TakeOwnership',
-        'Write',
-        'Read',
-        'ReadAndExecute',
-        'Modify'
-    ]
-
-    VALID_TYPE = [
-        'all',
-        'success',
-        'fail'
-    ]
-    # Configuration for win_notify beacon should be a dict of dicts
-    if not isinstance(config, dict):
-        return False, 'Configuration for win_notify beacon must be a dictionary.'
-    else:
-        for config_item in config:
-            if not isinstance(config[config_item], dict):
-                return False, 'Configuration for win_notify beacon must be a dictionary of dictionaries.'
-            else:
-                if not any(j in ['mask', 'recurse'] for j in config[config_item]):
-                    return False, 'Configuration for win_notify beacon must contain mask, recurse or auto_add items.'
-
-            if 'recurse' in config[config_item]:
-                if not isinstance(config[config_item]['recurse'], bool):
-                    return False, 'Configuration for win_notify beacon recurse must be boolean.'
-
-            if 'mask' in config[config_item]:
-                if not isinstance(config[config_item]['mask'], list):
-                    return False, 'Configuration for win_notify beacon mask must be list.'
-                for mask in config[config_item]['mask']:
-                    if mask not in VALID_MASK:
-                        return False, 'Configuration for win_notify beacon invalid mask option {0}.'.format(mask)
-
-            if 'wtype' in config[config_item]:
-                if not isinstance(config[config_item]['wtype'], str):
-                    return False, 'Configuration for win_notify beacon type must be str.'
-                for wtype in config[config_item]['wtype']:
-                    if wtype not in VALID_TYPE:
-                        return False, 'Configuration for win_notify beacon invalid type option {0}'.format(wtype)
-        return True, 'Valid beacon configuration'
 
 
 def beacon(config):
@@ -147,8 +91,51 @@ def beacon(config):
 
     :return:
     '''
+    global CONFIG_STALENESS
+    global CONFIG
+    if config.get('verbose'):
+        log.debug('Pulsar beacon called.')
+        log.debug('Pulsar beacon config from pillar:\n{0}'.format(config))
     ret = []
     sys_check = 0
+
+    # Get config(s) from filesystem if we don't have them already
+    if CONFIG and CONFIG_STALENESS < config.get('refresh_frequency', 60):
+        CONFIG_STALENESS += 1
+        CONFIG.update(config)
+        CONFIG['verbose'] = config.get('verbose')
+        config = CONFIG
+    else:
+        if config.get('verbose'):
+            log.debug('No cached config found for pulsar, retrieving fresh from disk.')
+        new_config = config
+        if isinstance(config.get('paths'), list):
+            for path in config['paths']:
+                if 'salt://' in path:
+                    log.error('Path {0} is not an absolute path. Please use a '
+                              'scheduled cp.cache_file job to deliver the '
+                              'config to the minion, then provide the '
+                              'absolute path to the cached file on the minion '
+                              'in the beacon config.'.format(path))
+                    continue
+                if os.path.isfile(path):
+                    with open(path, 'r') as f:
+                        new_config = _dict_update(new_config,
+                                                  yaml.safe_load(f),
+                                                  recursive_update=True,
+                                                  merge_lists=True)
+                else:
+                    log.error('Path {0} does not exist or is not a file'.format(path))
+        else:
+            log.error('Pulsar beacon \'paths\' data improperly formatted. Should be list of paths')
+
+        new_config.update(config)
+        config = new_config
+        CONFIG_STALENESS = 0
+        CONFIG = config
+
+    if config.get('verbose'):
+        log.debug('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
 
     # Validate Global Auditing with Auditpol
     global_check = __salt__['cmd.run']('auditpol /get /category:"Object Access" /r | find "File System"',
@@ -182,11 +169,58 @@ def beacon(config):
     #Read in events since last call.  Time_frame in minutes
     ret = _pull_events(config['win_notify_interval'])
     if sys_check == 1:
-        problem = {}
-        problem['error'] = 'The ACLs were not setup correctly, or global auditing is not enabled.  This could have' \
-                   'been remedied, bug GP might need to be changed'
-        ret.append(problem)
-    return ret
+        log.error('The ACLs were not setup correctly, or global auditing is not enabled.  This could have '
+                  'been remedied, but GP might need to be changed')
+
+    if __salt__['config.get']('hubblestack:pulsar:maintenance', False):
+        # We're in maintenance mode, throw away findings
+        ret = []
+
+    if ret and 'return' in config:
+        __opts__['grains'] = __grains__
+        __opts__['pillar'] = __pillar__
+        __returners__ = salt.loader.returners(__opts__, __salt__)
+        return_config = config['return']
+        if isinstance(return_config, salt.ext.six.string_types):
+            tmp = {}
+            for conf in return_config.split(','):
+                tmp[conf] = None
+            return_config = tmp
+        for returner_mod in return_config:
+            returner = '{0}.returner'.format(returner_mod)
+            if returner not in __returners__:
+                log.error('Could not find {0} returner for pulsar beacon'.format(config['return']))
+                return ret
+            batch_config = config.get('batch')
+            if isinstance(return_config[returner_mod], dict) and return_config[returner_mod].get('batch'):
+                batch_config = True
+            if batch_config:
+                transformed = []
+                for item in ret:
+                    transformed.append({'return': item})
+                if config.get('multiprocessing_return', False):
+                    p = multiprocessing.Process(target=_return, args=((transformed,), returner))
+                    p.daemon = True
+                    p.start()
+                else:
+                    __returners__[returner](transformed)
+            else:
+                for item in ret:
+                    if config.get('multiprocessing_return', False):
+                        p = multiprocessing.Process(target=_return, args=(({'return': item},), returner))
+                        p.daemon = True
+                        p.start()
+                    else:
+                        __returners__[returner]({'return': item})
+        return []
+    else:
+        # Return event data
+        return ret
+
+
+def _return(args, returner):
+    __returners__ = salt.loader.returners(__opts__, __salt__)
+    __returners__[returner](*args)
 
 
 def _check_acl(path, mask, wtype, recurse):
@@ -245,16 +279,16 @@ def _add_acl(path, mask, wtype, recurse):
 
      $SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance()
      $Trustee = ([WMIClass] "Win32_Trustee").CreateInstance()
- 
+
      # One for Success and other for Failure events
      $ace1 = ([WMIClass] "Win32_ace").CreateInstance()
      $ace2 = ([WMIClass] "Win32_ace").CreateInstance()
- 
+
      $SID = (new-object security.principal.ntaccount $user).translate([security.principal.securityidentifier])
- 
+
      [byte[]] $SIDArray = ,0 * $SID.BinaryLength
      $SID.GetBinaryForm($SIDArray,0)
- 
+
      $Trustee.Name = $user
      $Trustee.SID = $SIDArray
 
@@ -263,21 +297,21 @@ def _add_acl(path, mask, wtype, recurse):
      $ace2.AceFlags = 131 #  FAILED_ACCESS_ACE_FLAG (128), CONTAINER_INHERIT_ACE (2), OBJECT_INHERIT_ACE (1)
      $ace2.AceType =2 # Audit
      $ace2.Trustee = $Trustee
-  
+
      $SD.SACL += $ace1.psobject.baseobject
      $SD.SACL += $ace2.psobject.baseobject
-     $SD.ControlFlags=16  
+     $SD.ControlFlags=16
      $wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path='$path'" -EnableAllPrivileges
      $wPrivilege.setsecuritydescriptor($SD)
 
     The ACE accessmask map key is below:
-   
+
      1.  ReadData                        - 1
      2.  CreateFiles                     - 2
      3.  AppendData                      - 4
      4.  ReadExtendedAttributes          - 8
      5.  WriteExtendedAttributes         - 16
-     6.  ExecuteFile                     - 32 
+     6.  ExecuteFile                     - 32
      7.  DeleteSubdirectoriesAndFiles    - 64
      8.  ReadAttributes                  - 128
      9.  WriteAttributes                 - 256
@@ -289,14 +323,14 @@ def _add_acl(path, mask, wtype, recurse):
      15. Read                            - 131209 (Combo of ReadData, ReadAttributes, ReadExtendedAttributes, ReadPermissions)
      16. ReadAndExecute                  - 131241 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes,
                                                    ReadPermissions)
-     17. Modify                          - 197055 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes, 
-                                                   CreateFiles, AppendData, WriteAttributes, WriteExtendedAttributes, 
+     17. Modify                          - 197055 (Combo of ExecuteFile, ReadData, ReadAttributes, ReadExtendedAttributes,
+                                                   CreateFiles, AppendData, WriteAttributes, WriteExtendedAttributes,
                                                    Delete, ReadPermissions)
     The Ace flags map key is below:
-     1. ObjectInherit                    - 1 
+     1. ObjectInherit                    - 1
      2. ContainerInherit                 - 2
      3. NoPorpagateInherit               - 4
-     4. SuccessfulAccess                 - 64  (Used with System-audit to generate audit messages for successful access 
+     4. SuccessfulAccess                 - 64  (Used with System-audit to generate audit messages for successful access
                                                 attempts)
      5. FailedAccess                     - 128 (Used with System-audit to generate audit messages for Failed access attempts)
 
@@ -308,7 +342,7 @@ def _add_acl(path, mask, wtype, recurse):
     If you want multiple values you just add them together to get a desired outcome:
      ACCESSMASK of file_add_file, file_add_subdirectory, delete, file_delete_child, write_dac, write_owner:
      852038 =           2       +           4          + 65536 +        64        +   262144i
-    
+
      FLAGS of ObjectInherit, ContainerInherit, SuccessfullAccess, FailedAccess:
      195 =         1       +        2        +        64        +      128
 
@@ -324,10 +358,10 @@ def _add_acl(path, mask, wtype, recurse):
         audit_type = 'Success,Failure'
     else:
         audit_type = wtype
-    
+
     access_mask = _get_ace_translation(audit_rules)
     flags = _get_ace_translation(inherit_type, audit_type)
- 
+
     __salt__['cmd.run']('$SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance();'
                         '$Trustee = ([WMIClass] "Win32_Trustee").CreateInstance();'
                         '$ace = ([WMIClass] "Win32_ace").CreateInstance();'
@@ -358,7 +392,7 @@ def _remove_acl(path):
     '''
     path = path.replace('\\','\\\\')
     __salt__['cmd.run']('$SD = ([WMIClass] "Win32_SecurityDescriptor").CreateInstance();'
-                        '$SD.ControlFlags=16;' 
+                        '$SD.ControlFlags=16;'
                         '$wPrivilege = Get-WmiObject Win32_LogicalFileSecuritySetting -filter "path=\'{0}\'" -EnableAllPrivileges;'
                         '$wPrivilege.setsecuritydescriptor($SD)'.format(path), shell='powershell', python_shell=True)
 
@@ -393,11 +427,11 @@ def _get_ace_translation(value, *args):
 
     '''
     ret = 0
-    ace_dict = {'ReadData': 1, 'CreateFiles': 2, 'AppendData': 4, 'ReadExtendedAttributes': 8, 
+    ace_dict = {'ReadData': 1, 'CreateFiles': 2, 'AppendData': 4, 'ReadExtendedAttributes': 8,
                 'WriteExtendedAttributes': 16, 'ExecuteFile': 32, 'DeleteSubdirectoriesAndFiles': 64,
                 'ReadAttributes': 128, 'WriteAttributes': 256, 'Write': 278, 'Delete': 65536, 'ReadPermissions': 131072,
-                'ChangePermissions': 262144, 'TakeOwnership': 524288, 'Read': 131209, 'ReadAndExecute': 131241, 
-                'Modify': 197055, 'ObjectInherit': 1, 'ContainerInherit': 2, 'NoPropagateInherit': 4, 'Success': 64, 
+                'ChangePermissions': 262144, 'TakeOwnership': 524288, 'Read': 131209, 'ReadAndExecute': 131241,
+                'Modify': 197055, 'ObjectInherit': 1, 'ContainerInherit': 2, 'NoPropagateInherit': 4, 'Success': 64,
                 'Failure': 128}
     aces = value.split(',')
     for arg in args:
@@ -406,7 +440,7 @@ def _get_ace_translation(value, *args):
     for ace in aces:
         if ace in ace_dict:
             ret += ace_dict[ace]
-    return ret        
+    return ret
 
 
 def _get_access_translation(access):

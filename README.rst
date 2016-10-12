@@ -95,8 +95,8 @@ repo for updates and bugfixes!)
 
 .. code-block:: shell
 
-    wget https://spm.hubblestack.io/2016.7.1/hubblestack_pulsar-2016.7.1-1.spm
-    spm local install hubblestack_pulsar-2016.7.1-1.spm
+    wget http://spm.hubblestack.io/pulsar/hubblestack_pulsar-2016.9.4-1.spm
+    spm local install hubblestack_pulsar-2016.9.4-1.spm
 
 You should now be able to sync the new modules to your minion(s) using the
 ``sync_modules`` Salt utility:
@@ -172,23 +172,26 @@ is meant to act as a template. It works in tandem with the
 different needs and requirements, and we understand that, so we've designed
 Pulsar to be flexible.
 
+** pillar.example **
+
 .. code-block:: yaml
 
-    # pillar.example
     beacons:
       pulsar:
         paths:
           - /var/cache/salt/minion/files/base/hubblestack_pulsar/hubblestack_pulsar_config.yaml
     schedule:
-      cache_nebula:
+      cache_pulsar:
         function: cp.cache_file
         seconds: 86400
         args:
           - salt://hubblestack_pulsar/hubblestack_pulsar_config.yaml
         return_job: False
 
+** hubblestack_pulsar_config **
 
-    # hubblestack_pulsar_config.yaml
+.. code-block:: yaml
+
     /etc: { recurse: True, auto_add: True }
     /bin: { recurse: True, auto_add: True }
     /sbin: { recurse: True, auto_add: True }

@@ -15,6 +15,7 @@ Watch files and translate the changes into salt events
 from __future__ import absolute_import
 import collections
 import fnmatch
+import multiprocessing
 import os
 import re
 import yaml
@@ -46,6 +47,8 @@ log = logging.getLogger(__name__)
 
 
 def __virtual__():
+    if salt.utils.is_windows():
+        return False, 'This module only works on Linux'
     if HAS_PYINOTIFY:
         return __virtualname__
     return False
@@ -88,7 +91,7 @@ def beacon(config):
           pulsar:
             paths:
               - /var/cache/salt/minion/files/base/hubblestack_pulsar/hubblestack_pulsar_config.yaml
-            refresh_frequency: 60
+            refresh_interval: 300
             verbose: False
 
     Example yaml config on fileserver (targeted by pillar)
@@ -161,16 +164,17 @@ def beacon(config):
     ret = []
     notifier = _get_notifier()
     wm = notifier._watch_manager
+    update_watches = False
 
     # Get config(s) from salt fileserver if we don't have them already
-    if CONFIG and CONFIG_STALENESS < config.get('refresh_frequency', 60):
+    if CONFIG and CONFIG_STALENESS < config.get('refresh_interval', 300):
         CONFIG_STALENESS += 1
         CONFIG.update(config)
         CONFIG['verbose'] = config.get('verbose')
         config = CONFIG
     else:
         if config.get('verbose'):
-            log.debug('No cached config found for pulsar, fetching new.')
+            log.debug('No cached config found for pulsar, retrieving fresh from disk.')
         new_config = config
         if isinstance(config.get('paths'), list):
             for path in config['paths']:
@@ -196,6 +200,7 @@ def beacon(config):
         config = new_config
         CONFIG_STALENESS = 0
         CONFIG = config
+        update_watches = True
 
     if config.get('verbose'):
         log.debug('Pulsar beacon config (compiled from config list):\n{0}'.format(config))
@@ -205,6 +210,8 @@ def beacon(config):
         notifier.read_events()
         notifier.process_events()
         queue = __context__['pulsar.queue']
+        if config.get('verbose'):
+            log.debug('Pulsar found {0} inotify events.'.format(len(queue)))
         while queue:
             event = queue.popleft()
             if event.maskname == 'IN_Q_OVERFLOW':
@@ -264,59 +271,60 @@ def beacon(config):
             else:
                 log.info('Excluding {0} from event for {1}'.format(event.pathname, path))
 
-    # Get paths currently being watched
-    current = set()
-    for wd in wm.watches:
-        current.add(wm.watches[wd].path)
+    if update_watches:
+        # Get paths currently being watched
+        current = set()
+        for wd in wm.watches:
+            current.add(wm.watches[wd].path)
 
-    # Update existing watches and add new ones
-    # TODO: make the config handle more options
-    for path in config:
-        if path == 'return' or path == 'checksum' or path == 'stats' \
-                or path == 'batch' or path == 'verbose' or path == 'paths' \
-                or path == 'refresh_frequency':
-            continue
-        if isinstance(config[path], dict):
-            mask = config[path].get('mask', DEFAULT_MASK)
-            excludes = config[path].get('exclude', None)
-            if isinstance(mask, list):
-                r_mask = 0
-                for sub in mask:
-                    r_mask |= _get_mask(sub)
-            elif isinstance(mask, salt.ext.six.binary_type):
-                r_mask = _get_mask(mask)
+        # Update existing watches and add new ones
+        # TODO: make the config handle more options
+        for path in config:
+            if path == 'return' or path == 'checksum' or path == 'stats' \
+                    or path == 'batch' or path == 'verbose' or path == 'paths' \
+                    or path == 'refresh_interval':
+                continue
+            if isinstance(config[path], dict):
+                mask = config[path].get('mask', DEFAULT_MASK)
+                excludes = config[path].get('exclude', None)
+                if isinstance(mask, list):
+                    r_mask = 0
+                    for sub in mask:
+                        r_mask |= _get_mask(sub)
+                elif isinstance(mask, salt.ext.six.binary_type):
+                    r_mask = _get_mask(mask)
+                else:
+                    r_mask = mask
+                mask = r_mask
+                rec = config[path].get('recurse', False)
+                auto_add = config[path].get('auto_add', False)
             else:
-                r_mask = mask
-            mask = r_mask
-            rec = config[path].get('recurse', False)
-            auto_add = config[path].get('auto_add', False)
-        else:
-            mask = DEFAULT_MASK
-            rec = False
-            auto_add = False
+                mask = DEFAULT_MASK
+                rec = False
+                auto_add = False
 
-        if path in current:
-            for wd in wm.watches:
-                if path == wm.watches[wd].path:
-                    update = False
-                    if wm.watches[wd].mask != mask:
-                        update = True
-                    if wm.watches[wd].auto_add != auto_add:
-                        update = True
-                    if update:
-                        wm.update_watch(wd, mask=mask, rec=rec, auto_add=auto_add)
-        elif os.path.exists(path):
-            excl = None
-            if isinstance(excludes, list):
-                excl = []
-                for exclude in excludes:
-                    if isinstance(exclude, dict):
-                        excl.append(exclude.keys()[0])
-                    else:
-                        excl.append(exclude)
-                excl = pyinotify.ExcludeFilter(excl)
+            if path in current:
+                for wd in wm.watches:
+                    if path == wm.watches[wd].path:
+                        update = False
+                        if wm.watches[wd].mask != mask:
+                            update = True
+                        if wm.watches[wd].auto_add != auto_add:
+                            update = True
+                        if update:
+                            wm.update_watch(wd, mask=mask, rec=rec, auto_add=auto_add)
+            elif os.path.exists(path):
+                excl = None
+                if isinstance(excludes, list):
+                    excl = []
+                    for exclude in excludes:
+                        if isinstance(exclude, dict):
+                            excl.append(exclude.keys()[0])
+                        else:
+                            excl.append(exclude)
+                    excl = pyinotify.ExcludeFilter(excl)
 
-            wm.add_watch(path, mask, rec=rec, auto_add=auto_add, exclude_filter=excl)
+                wm.add_watch(path, mask, rec=rec, auto_add=auto_add, exclude_filter=excl)
 
     if __salt__['config.get']('hubblestack:pulsar:maintenance', False):
         # We're in maintenance mode, throw away findings
@@ -344,10 +352,20 @@ def beacon(config):
                 transformed = []
                 for item in ret:
                     transformed.append({'return': item})
-                __returners__[returner](transformed)
+                if config.get('multiprocessing_return', True):
+                    p = multiprocessing.Process(target=__returners__[returner], args=(transformed,))
+                    p.daemon = True
+                    p.start()
+                else:
+                    __returners__[returner](transformed)
             else:
                 for item in ret:
-                    __returners__[returner]({'return': item})
+                    if config.get('multiprocessing_return', True):
+                        p = multiprocessing.Process(target=__returners__[returner], args=({'return': item},))
+                        p.daemon = True
+                        p.start()
+                    else:
+                        __returners__[returner]({'return': item})
         return []
     else:
         # Return event data

@@ -16,6 +16,8 @@
     - /opt/splunk/var/
     - /opt/cloudpassage/log/
     - /opt/splunkforwarder/var/
+    - '\/opt\/imply-\d\.\d\.\d\/':
+        regex: True
   recurse: True
   auto_add: True
 /etc:

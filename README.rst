@@ -240,6 +240,27 @@ defined path.
         - /var/cache
         - /var/lock
 
+
+Troubleshooting
+===============
+
+If inotify is reporting that it can't create watches due to lack of disk space,
+but you have plenty of disk space and inodes available, then you may have to
+raise the max number of inotify watches.
+
+To check the max number of inotify watches:
+
+.. code-block:: bash
+
+    # cat /proc/sys/fs/inotify/max_user_watches
+
+To set the max number of inotify watches:
+
+.. code-block:: bash
+
+    # echo 20000 | sudo tee -a /proc/sys/fs/inotify/max_user_watches
+
+
 .. _pulsar_under_the_hood:
 
 Under The Hood

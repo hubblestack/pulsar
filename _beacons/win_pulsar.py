@@ -25,7 +25,7 @@ DEFAULT_MASK = ['ExecuteFile', 'Write', 'Delete', 'DeleteSubdirectoriesAndFiles'
 DEFAULT_TYPE = 'all'
 
 __virtualname__ = 'pulsar'
-__version__ = 'v2016.10.1'
+__version__ = 'v2016.10.2'
 CONFIG = None
 CONFIG_STALENESS = 0
 

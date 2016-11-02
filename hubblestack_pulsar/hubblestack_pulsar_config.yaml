@@ -11,17 +11,8 @@
 /usr/local/bin: { recurse: True, auto_add: True }
 /usr/local/lib: { recurse: True, auto_add: True }
 /usr/local/sbin: { recurse: True, auto_add: True }
-/opt:
-  exclude:
-    - /opt/splunk/var/
-    - /opt/cloudpassage/log/
-    - /opt/cloudpassage/data/
-    - /opt/salt/utils/error_log.log
-    - /opt/splunkforwarder/var/
-    - '\/opt\/imply-\d\.\d\.\d\/':
-        regex: True
-  recurse: True
-  auto_add: True
+/opt/splunk/etc: { recurse: True, auto_add: True }
+/opt/bin: { recurse: True, auto_add: True }
 /etc:
   exclude:
     - /etc/passwd.lock

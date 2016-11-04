@@ -327,6 +327,14 @@ def beacon(config):
 
                 wm.add_watch(path, mask, rec=rec, auto_add=auto_add, exclude_filter=excl)
 
+        # Process watch removals
+        to_delete = []
+        for wd in wm.watches:
+            if wm.watches[wd].path not in config:
+                to_delete.append(wd)
+        for wd in to_delete:
+            wm.del_watch(wd)
+
     if __salt__['config.get']('hubblestack:pulsar:maintenance', False):
         # We're in maintenance mode, throw away findings
         ret = []

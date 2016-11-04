@@ -330,7 +330,11 @@ def beacon(config):
         # Process watch removals
         to_delete = []
         for wd in wm.watches:
-            if wm.watches[wd].path not in config:
+            found = False
+            for path in config:
+                if path in wm.watches[wd].path:
+                    found = True
+            if not found:
                 to_delete.append(wd)
         for wd in to_delete:
             wm.del_watch(wd)

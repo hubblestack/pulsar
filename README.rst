@@ -162,7 +162,7 @@ checkouts.
 
 Requirements: GitFS support on your Salt Master.
 
-**/etc/salt/master.d/hubblestack-nova.conf**
+**/etc/salt/master.d/hubblestack-pulsar.conf**
 
 .. code-block:: diff
 

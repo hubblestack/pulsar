@@ -95,8 +95,8 @@ repo for updates and bugfixes!)
 
 .. code-block:: shell
 
-    wget http://spm.hubblestack.io/pulsar/hubblestack_pulsar-2016.9.4-1.spm
-    spm local install hubblestack_pulsar-2016.9.4-1.spm
+    wget http://spm.hubblestack.io/pulsar/hubblestack_pulsar-2016.10.3-1.spm
+    spm local install hubblestack_pulsar-2016.10.3-1.spm
 
 You should now be able to sync the new modules to your minion(s) using the
 ``sync_modules`` Salt utility:
@@ -152,6 +152,25 @@ Target the copied ``hubblestack_pulsar.sls`` to selected minions.
 .. code-block:: shell
 
     salt \* saltutil.refresh_pillar
+
+Installation (GitFS)
+--------------------
+
+This installation method subscribes directly to our GitHub repository, pinning
+to a tag or branch. This method requires no package installation or manual
+checkouts.
+
+Requirements: GitFS support on your Salt Master.
+
+**/etc/salt/master.d/hubblestack-pulsar.conf**
+
+.. code-block:: diff
+
+    gitfs_remotes:
+      - https://github.com/hubblestack/pulsar:
+        - base: v2016.10.3
+
+.. tip:: Remember to restart the Salt Master after applying this change.
 
 .. _pulsar_usage:
 
